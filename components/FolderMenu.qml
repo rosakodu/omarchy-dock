@@ -10,19 +10,20 @@ import ".."
 
 PanelWindow {
     id: menuWindow
-    visible: menuWindow.root.isMenuOpen && menuWindow.root.opened && menuWindow.root.pluginEnabled && menuWindow.root.dockEnabled
+    visible: menuWindow.root.isMenuOpen && menuWindow.root.dockRevealed
 
     required property var root
     required property var dockWindow
     property var stackWindow: null
     property alias menuCard: menuCard
+    screen: menuWindow.dockWindow ? menuWindow.dockWindow.screen : null
 
     readonly property bool isDirectDockPopup: !menuWindow.root.isMenuFromFolder
 
     WlrLayershell.namespace: "omarchy-dock-menu"
     WlrLayershell.layer: WlrLayer.Top
     WlrLayershell.keyboardFocus: menuWindow.root.isMenuOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
-    exclusionMode: ExclusionMode.Auto
+    exclusionMode: menuWindow.root.reservesSpace ? ExclusionMode.Auto : ExclusionMode.Ignore
     color: "transparent"
 
     anchors {

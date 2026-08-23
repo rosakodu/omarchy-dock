@@ -7,6 +7,7 @@ import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
 import "DockModel.js" as DockModel
+import "DockSettings.js" as DockSettings
 import "components"
 
 Item {
@@ -92,10 +93,7 @@ Item {
         function toggle(): string { root.toggle(); return "ok" }
         function refresh(): string { return root.refresh() }
         function openWidgetPicker(): string {
-            root.opened = true
-            if (widgetPicker) {
-                widgetPicker.opened = true
-            }
+            root.openWidgetPicker()
             return "ok"
         }
         function addWidget(widgetId: string): string { root.addDockWidget(widgetId); return "ok" }
@@ -106,7 +104,11 @@ Item {
         function setWidgetPosition(pos: string): string { root.setWidgetPosition(pos); return "ok" }
         function setEditMode(val: string): string { root.isEditMode = (val === "true" || val === "1"); return "ok" }
         function setDockEnabled(val: string): string { root.dockEnabled = (val === "true" || val === "1"); root.saveSettings(); return "ok" }
-        function setAutohide(val: string): string { root.autohide = (val === "true" || val === "1"); root.saveSettings(); return "ok" }
+        function setAutohide(val: string): string { root.setAutohide(val === "true" || val === "1"); return "ok" }
+        function setVisibilityMode(mode: string): string { root.setVisibilityMode(mode); return "ok" }
+        function setSpaceMode(mode: string): string { root.setSpaceMode(mode); return "ok" }
+        function setVisibleWorkspace(workspace: string): string { root.setVisibleWorkspace(workspace); return "ok" }
+        function toggleReveal(): string { return root.toggleReveal() }
         function setAutohideEdgeDepth(val: string): string { var n = parseInt(val, 10); if (!isNaN(n) && n >= 1 && n <= 64) { root.autohideEdgeDepth = n; root.saveSettings(); } return "ok" }
         function setShowFolderTitles(val: string): string { root.showFolderTitles = (val === "true" || val === "1"); root.saveSettings(); return "ok" }
         function setShowBadges(val: string): string { root.showBadges = (val === "true" || val === "1"); root.saveSettings(); return "ok" }
@@ -115,8 +117,16 @@ Item {
 
     function openWidgetPicker() {
         root.opened = true
+        root.widgetPickerRevealOwned = false
+        root.widgetPickerPreviousVisibilityOverride = root.visibilityOverride
+        if (!root.dockRevealed) {
+            var result = root.toggleReveal("internal")
+            if (result !== "shown") return
+            root.widgetPickerRevealOwned = true
+        }
         if (widgetPicker) {
             widgetPicker.opened = true
+            autohideLeaveTimer.stop()
         }
     }
 
@@ -313,11 +323,22 @@ Item {
         }
     }
 
-    // Autohide Dock & Folder Settings Configuration
+    // Dock visibility, placement, and folder settings
     property string settingsPath: Quickshell.env("HOME") + "/.config/omarchy/dock-settings.json"
     property bool dockEnabled: true
-    property bool autohide: false
+    property string visibilityMode: "always"
+    readonly property bool autohide: root.visibilityMode !== "always"
+    property int visibilityOverride: DockSettings.VISIBILITY_OVERRIDE_FOLLOW
+    property string keyboardTargetWorkspace: ""
+    property string keyboardTargetMonitorName: ""
+    property string baseDockMonitorName: ""
+    property bool widgetPickerRevealOwned: false
+    property int widgetPickerPreviousVisibilityOverride: DockSettings.VISIBILITY_OVERRIDE_FOLLOW
+    property string spaceMode: "exclusive"
+    readonly property bool reservesSpace: root.spaceMode === "exclusive"
+    property string visibleWorkspace: "all"
     property int autohideEdgeDepth: 1  // pixels from screen edge that trigger dock reveal
+    readonly property int effectiveAutohideEdgeDepth: Math.max(4, Math.min(64, root.autohideEdgeDepth))
     property bool showFolderTitles: true
     property bool showBadges: true
     readonly property bool showAppMenu: root.widgetsEnabled && root.dockWidgets && (root.dockWidgets.indexOf("omarchy.apps") !== -1)
@@ -331,9 +352,104 @@ Item {
     property bool isMenuHovered: false
     property bool isWidgetPanelHovered: false
 
+    function workspaceForSelector(selector) {
+        var normalized = DockSettings.normalizeVisibleWorkspace(selector)
+        if (normalized === "all") return null
+        var workspaces = Hyprland.workspaces && Hyprland.workspaces.values ? Hyprland.workspaces.values : []
+        for (var i = 0; i < workspaces.length; i++) {
+            var workspace = workspaces[i]
+            if (workspace && DockSettings.workspaceMatches(normalized, workspace.id, workspace.name)) {
+                return workspace
+            }
+        }
+        return null
+    }
+
+    function screenForMonitorName(monitorName) {
+        var name = String(monitorName || "")
+        if (name === "") return null
+        var screens = Quickshell.screens || []
+        for (var i = 0; i < screens.length; i++) {
+            if (screens[i] && String(screens[i].name || "") === name) return screens[i]
+        }
+        return null
+    }
+
+    function screenForMonitor(monitor) {
+        return monitor ? root.screenForMonitorName(monitor.name) : null
+    }
+
+    function focusedWorkspaceForKeyboardToggle() {
+        var toplevel = Hyprland.activeToplevel
+        if (toplevel && toplevel.workspace) return toplevel.workspace
+        if (Hyprland.focusedWorkspace) return Hyprland.focusedWorkspace
+        if (Hyprland.focusedMonitor && Hyprland.focusedMonitor.activeWorkspace) {
+            return Hyprland.focusedMonitor.activeWorkspace
+        }
+        return null
+    }
+
+    readonly property bool hasExplicitWorkspace: root.visibleWorkspace !== "all"
+    readonly property var configuredWorkspace: root.hasExplicitWorkspace
+        ? root.workspaceForSelector(root.visibleWorkspace)
+        : null
+    readonly property var keyboardTargetWorkspaceObject: root.keyboardTargetWorkspace !== ""
+        ? root.workspaceForSelector(root.keyboardTargetWorkspace)
+        : null
+    readonly property var effectiveDockScreen: {
+        var target = DockSettings.dockScreenTarget(
+            root.visibleWorkspace,
+            root.visibilityMode,
+            root.visibilityOverride
+        )
+        if (target === "configured" && root.configuredWorkspace && root.configuredWorkspace.monitor) {
+            var configuredScreen = root.screenForMonitor(root.configuredWorkspace.monitor)
+            if (configuredScreen) return configuredScreen
+        }
+        if (target === "captured") {
+            var keyboardScreen = root.screenForMonitorName(root.keyboardTargetMonitorName)
+            if (keyboardScreen) return keyboardScreen
+        }
+        if (target === "focused") {
+            var focusedScreen = root.screenForMonitor(Hyprland.focusedMonitor)
+            if (focusedScreen) return focusedScreen
+        }
+        var baseScreen = root.screenForMonitorName(root.baseDockMonitorName)
+        if (baseScreen) return baseScreen
+        return Quickshell.screens && Quickshell.screens.length > 0 ? Quickshell.screens[0] : null
+    }
+
+    readonly property var currentDockWorkspace: {
+        if (root.hasExplicitWorkspace) return root.configuredWorkspace
+        if (root.visibilityOverride === DockSettings.VISIBILITY_OVERRIDE_SHOWN && root.keyboardTargetWorkspaceObject) {
+            return root.keyboardTargetWorkspaceObject
+        }
+        var screen = root.effectiveDockScreen
+        var monitor = screen ? Hyprland.monitorFor(screen) : Hyprland.focusedMonitor
+        if (monitor && monitor.activeWorkspace) return monitor.activeWorkspace
+        return Hyprland.focusedWorkspace
+    }
+
+    readonly property bool workspaceAllowed: {
+        var workspace = root.currentDockWorkspace
+        if (root.hasExplicitWorkspace) return workspace !== null && workspace.active === true
+        if (root.visibilityOverride !== DockSettings.VISIBILITY_OVERRIDE_SHOWN) return true
+        if (!workspace || workspace.active !== true || !workspace.monitor) return false
+        return String(workspace.monitor.name || "") === root.keyboardTargetMonitorName
+    }
+
+    readonly property bool dockAvailable: root.opened
+        && root.pluginEnabled
+        && root.dockEnabled
+        && root.workspaceAllowed
+        && root.isPinnedLoaded
+    readonly property bool dockMapped: root.dockAvailable && !remapTimer.running
+    readonly property bool dockRevealed: root.dockAvailable && !root.shouldSlideOut
+
     property var loadedWidgetItems: []
 
     function checkWidgetPanelsOpen() {
+        if (widgetPicker && widgetPicker.opened) return true
         for (var i = 0; i < root.loadedWidgetItems.length; i++) {
             var w = root.loadedWidgetItems[i]
             if (w) {
@@ -346,8 +462,9 @@ Item {
     }
 
     function evaluateHoverState() {
+        if (!root.autohide) return
         var anyOpenWidget = checkWidgetPanelsOpen()
-        var isDockWinHovered = (!root.autohide || !root.shouldSlideOut) && dockHoverHandler && dockHoverHandler.hovered
+        var isDockWinHovered = !root.shouldSlideOut && dockHoverHandler && dockHoverHandler.hovered
         var anyHover = isDockWinHovered || root.isStackHovered || root.isMenuHovered || root.isWidgetPanelHovered || anyOpenWidget
         if (anyHover) {
             autohideLeaveTimer.stop()
@@ -358,23 +475,9 @@ Item {
     }
 
     function getActiveWorkspaceWindowCount() {
-        var activeId = -1
-        if (Hyprland.focusedWorkspace && Hyprland.focusedWorkspace.id !== undefined) {
-            activeId = Hyprland.focusedWorkspace.id
-        } else if (Hyprland.focusedMonitor && Hyprland.focusedMonitor.activeWorkspace && Hyprland.focusedMonitor.activeWorkspace.id !== undefined) {
-            activeId = Hyprland.focusedMonitor.activeWorkspace.id
-        }
-        if (activeId === -1) return 0
-
-        var wsList = (Hyprland.workspaces && Hyprland.workspaces.values) ? Hyprland.workspaces.values : []
-        for (var i = 0; i < wsList.length; i++) {
-            var ws = wsList[i]
-            if (ws && ws.id === activeId) {
-                if (ws.toplevels && ws.toplevels.values) {
-                    return ws.toplevels.values.length
-                }
-                return 0
-            }
+        var workspace = root.currentDockWorkspace
+        if (workspace && workspace.toplevels && workspace.toplevels.values) {
+            return workspace.toplevels.values.length
         }
         return 0
     }
@@ -404,14 +507,19 @@ Item {
     Timer {
         id: workspaceCheckTimer
         interval: 200
-        running: root.autohide
+        running: root.visibilityMode === "hover" && root.workspaceAllowed
         repeat: true
         onTriggered: root.refreshActiveWorkspaceWindowCount()
     }
 
     readonly property bool isWorkspaceEmpty: root.activeWorkspaceWindowCount === 0
     readonly property bool isDockActive: root.isDockHovered || root.isStackHovered || root.isMenuHovered || root.isWidgetPanelHovered || root.checkWidgetPanelsOpen() || (root.dockDragActiveIndex >= 0)
-    readonly property bool shouldSlideOut: root.autohide && !root.isDockActive && !root.isWorkspaceEmpty
+    readonly property bool shouldSlideOut: DockSettings.shouldSlideOut(
+        root.visibilityMode,
+        root.visibilityOverride,
+        root.isDockActive,
+        root.isWorkspaceEmpty
+    )
 
     function closeAllWidgetPanels() {
         for (var i = 0; i < root.loadedWidgetItems.length; i++) {
@@ -430,14 +538,98 @@ Item {
         }
     }
 
-    onShouldSlideOutChanged: {
-        if (shouldSlideOut) {
-            root.activeStackItem = null
-            root.activeMenuItem = null
-            root.isEditingFolderTitle = false
-            root.isEditMode = false
-            root.closeAllWidgetPanels()
+    function closeDockPopups() {
+        root.activeStackItem = null
+        root.activeMenuItem = null
+        root.isEditingFolderTitle = false
+        root.isEditMode = false
+        if (widgetPicker) widgetPicker.opened = false
+        root.closeAllWidgetPanels()
+    }
+
+    function toggleReveal(revealSource) {
+        if (!root.opened || !root.dockEnabled || !root.pluginEnabled || !root.isPinnedLoaded) return "unavailable"
+        var source = revealSource === "internal" ? "internal" : "keyboard"
+        if (!DockSettings.revealRequestAllowed(root.visibilityMode, source)) return "inactive"
+
+        var focusedWorkspace = root.focusedWorkspaceForKeyboardToggle()
+        var decision = DockSettings.keyboardToggleDecision(
+            root.dockRevealed,
+            root.visibleWorkspace,
+            focusedWorkspace,
+            root.configuredWorkspace
+        )
+
+        if (decision.action === "hide") {
+            autohideLeaveTimer.stop()
+            root.visibilityOverride = DockSettings.VISIBILITY_OVERRIDE_HIDDEN
+            root.isDockHovered = false
+            root.closeDockPopups()
+            return "hidden"
         }
+        if (decision.action !== "show") return decision.action
+
+        var targetWorkspace = root.hasExplicitWorkspace ? root.configuredWorkspace : focusedWorkspace
+        var targetScreen = targetWorkspace && targetWorkspace.monitor
+            ? root.screenForMonitor(targetWorkspace.monitor)
+            : null
+        if (!targetScreen) return "screen-unavailable"
+
+        root.keyboardTargetWorkspace = decision.targetWorkspace
+        root.keyboardTargetMonitorName = String(targetWorkspace.monitor.name || "")
+        root.visibilityOverride = DockSettings.VISIBILITY_OVERRIDE_SHOWN
+        if (source === "keyboard" && DockSettings.shouldAutoDismissKeyboardReveal(root.visibilityMode, root.visibilityOverride)) {
+            autohideLeaveTimer.restart()
+        }
+        return "shown"
+    }
+
+    function handleWidgetPickerOpenedChanged(opened) {
+        if (opened) {
+            autohideLeaveTimer.stop()
+            return
+        }
+
+        root.visibilityOverride = DockSettings.releaseInteractionVisibilityOverride(
+            root.widgetPickerRevealOwned,
+            root.widgetPickerPreviousVisibilityOverride,
+            root.visibilityOverride
+        )
+        root.widgetPickerRevealOwned = false
+        root.isDockHovered = false
+        root.evaluateHoverState()
+    }
+
+    onDockRevealedChanged: {
+        if (!dockRevealed) {
+            root.closeDockPopups()
+        }
+    }
+
+    onVisibilityModeChanged: {
+        root.widgetPickerRevealOwned = false
+        root.visibilityOverride = DockSettings.VISIBILITY_OVERRIDE_FOLLOW
+        root.keyboardTargetWorkspace = ""
+        root.keyboardTargetMonitorName = ""
+        root.isDockHovered = false
+        autohideLeaveTimer.stop()
+    }
+
+    onWorkspaceAllowedChanged: {
+        if (!workspaceAllowed && root.visibilityOverride === DockSettings.VISIBILITY_OVERRIDE_SHOWN) {
+            root.visibilityOverride = DockSettings.VISIBILITY_OVERRIDE_HIDDEN
+            root.closeDockPopups()
+        }
+    }
+
+    onVisibleWorkspaceChanged: {
+        root.visibilityOverride = DockSettings.VISIBILITY_OVERRIDE_FOLLOW
+        root.keyboardTargetWorkspace = ""
+        root.keyboardTargetMonitorName = ""
+    }
+
+    onEffectiveDockScreenChanged: {
+        remapTimer.restart()
     }
 
     readonly property var widgetLayout: DockModel.getDockWidgetLayout(root.showAppMenu, root.appMenuPosition, root.widgetsEnabled, root.dockWidgets, root.widgetPosition)
@@ -573,11 +765,12 @@ Item {
             if (txt && txt.trim().length > 0) {
                 var s = JSON.parse(txt)
                 if (!s || typeof s !== "object") return
+                var normalized = DockSettings.normalize(s)
+                root.visibilityMode = normalized.visibilityMode
+                root.spaceMode = normalized.spaceMode
+                root.visibleWorkspace = normalized.visibleWorkspace
                 if (s.dockEnabled !== undefined) {
                     root.dockEnabled = (s.dockEnabled === true)
-                }
-                if (s.autohide !== undefined) {
-                    root.autohide = (s.autohide === true)
                 }
                 if (s.autohideEdgeDepth !== undefined) {
                     var depth = parseInt(s.autohideEdgeDepth, 10)
@@ -619,7 +812,10 @@ Item {
         saveSettingsTimer.restart()
         var jsonStr = JSON.stringify({
             dockEnabled: root.dockEnabled,
-            autohide: root.autohide,
+            visibilityMode: root.visibilityMode,
+            autohide: DockSettings.legacyAutohide(root.visibilityMode),
+            spaceMode: root.spaceMode,
+            visibleWorkspace: root.visibleWorkspace,
             autohideEdgeDepth: root.autohideEdgeDepth,
             showFolderTitles: root.showFolderTitles,
             showBadges: root.showBadges,
@@ -630,6 +826,26 @@ Item {
             widgetSavedPositions: root.widgetSavedPositions || {}
         }, null, 2)
         settingsFile.setText(jsonStr + "\n")
+    }
+
+    function setAutohide(val) {
+        root.visibilityMode = val ? "hover" : "always"
+        saveSettings()
+    }
+
+    function setVisibilityMode(mode) {
+        root.visibilityMode = DockSettings.normalizeVisibilityMode(mode, false)
+        saveSettings()
+    }
+
+    function setSpaceMode(mode) {
+        root.spaceMode = DockSettings.normalizeSpaceMode(mode)
+        saveSettings()
+    }
+
+    function setVisibleWorkspace(workspace) {
+        root.visibleWorkspace = DockSettings.normalizeVisibleWorkspace(workspace)
+        saveSettings()
     }
 
     function setShowAppMenu(val) {
@@ -1337,6 +1553,9 @@ Item {
     }
 
     Component.onCompleted: {
+        if (Hyprland.focusedMonitor) {
+            root.baseDockMonitorName = String(Hyprland.focusedMonitor.name || "")
+        }
         try {
             var scTxt = shellConfigFile.text()
             if (scTxt && scTxt.trim().length > 0) {
@@ -1451,12 +1670,13 @@ Item {
     // 1. The Main Solid Dock Window
     PanelWindow {
         id: dockWindow
-        visible: root.opened && root.pluginEnabled && root.dockEnabled && root.isPinnedLoaded && !remapTimer.running
+        screen: root.effectiveDockScreen
+        visible: root.dockMapped
 
         WlrLayershell.namespace: "omarchy-dock"
         WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.keyboardFocus: root.isEditMode ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
-        exclusionMode: (root.opened && root.pluginEnabled && root.dockEnabled && root.isPinnedLoaded && visible && (!root.autohide || !root.shouldSlideOut)) ? ExclusionMode.Auto : ExclusionMode.Ignore
+        exclusionMode: root.dockRevealed && root.reservesSpace ? ExclusionMode.Auto : ExclusionMode.Ignore
         color: "transparent"
 
         anchors {
@@ -1478,7 +1698,7 @@ Item {
 
         HoverHandler {
             id: dockHoverHandler
-            enabled: !root.autohide || !root.shouldSlideOut
+            enabled: root.autohide && !root.shouldSlideOut
             onHoveredChanged: {
                 root.evaluateHoverState()
             }
@@ -1490,10 +1710,14 @@ Item {
             interval: 1500
             repeat: false
             onTriggered: {
+                if (!root.autohide) return
                 var anyOpenWidget = root.checkWidgetPanelsOpen()
                 var anyHover = (dockHoverHandler && dockHoverHandler.hovered) || root.isStackHovered || root.isMenuHovered || root.isWidgetPanelHovered || anyOpenWidget
                 if (!anyHover) {
                     root.isDockHovered = false
+                    if (DockSettings.shouldAutoDismissKeyboardReveal(root.visibilityMode, root.visibilityOverride)) {
+                        root.visibilityOverride = DockSettings.VISIBILITY_OVERRIDE_FOLLOW
+                    }
                 }
             }
         }
@@ -1504,7 +1728,7 @@ Item {
             anchors.centerIn: parent
             width: root.isVertical ? (root.slotSize + 4) : Math.max(root.slotSize + 4, root.totalDockDimension + 8)
             height: root.isVertical ? Math.max(root.slotSize + 4, root.totalDockDimension + 8) : (root.slotSize + 4)
-            visible: root.opened && root.pluginEnabled && root.dockEnabled && root.isPinnedLoaded && !remapTimer.running
+            visible: root.dockMapped
             opacity: root.isDockVisualReady ? 1.0 : 0.0
             Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
             focus: root.isEditMode
@@ -1545,13 +1769,13 @@ Item {
             transform: Translate {
                 id: autohideTranslate
                 x: {
-                    if (!root.autohide || !root.shouldSlideOut) return 0
+                    if (!root.shouldSlideOut) return 0
                     if (root.barPosition === "right") return -56
                     if (root.barPosition === "left") return 56
                     return 0
                 }
                 y: {
-                    if (!root.autohide || !root.shouldSlideOut) return 0
+                    if (!root.shouldSlideOut) return 0
                     if (root.barPosition === "top") return 56
                     if (root.barPosition === "bottom") return -56
                     return 0
@@ -2142,17 +2366,20 @@ Item {
     }
 
     // 5. Autohide Edge Trigger — thin invisible strip at screen edge, activates dock reveal
-    //    Width/height = autohideEdgeDepth px (1–64). Active only when dock is hidden (shouldSlideOut).
+    //    Recreate its input handler after each reveal so stale hover state cannot block re-arming.
     PanelWindow {
         id: edgeTriggerWindow
-        visible: root.opened && root.pluginEnabled && root.dockEnabled && root.isPinnedLoaded
-                 && root.autohide && root.shouldSlideOut
+        screen: dockWindow.screen
+        visible: root.dockAvailable
+                 && root.visibilityMode === "hover"
+                 && root.shouldSlideOut
 
         WlrLayershell.namespace: "omarchy-dock-edge"
         WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
         exclusionMode: ExclusionMode.Ignore
         color: "transparent"
+        mask: Region { item: edgeTriggerLoader }
 
         // Anchor to the same edge as the dock, no margins — hug the screen edge
         anchors {
@@ -2169,16 +2396,24 @@ Item {
             right: 0
         }
 
-        implicitWidth:  root.isVertical ? root.autohideEdgeDepth : Math.max(root.slotSize + 8, root.totalDockDimension + 14)
-        implicitHeight: root.isVertical ? Math.max(root.slotSize + 8, root.totalDockDimension + 14) : root.autohideEdgeDepth
+        implicitWidth:  root.isVertical ? root.effectiveAutohideEdgeDepth : Math.max(root.slotSize + 8, root.totalDockDimension + 14)
+        implicitHeight: root.isVertical ? Math.max(root.slotSize + 8, root.totalDockDimension + 14) : root.effectiveAutohideEdgeDepth
 
-        HoverHandler {
-            id: edgeTriggerHover
-            onHoveredChanged: {
-                if (hovered) {
-                    // Cursor reached the screen edge — show the dock
-                    root.isDockHovered = true
-                    autohideLeaveTimer.stop()
+        Loader {
+            id: edgeTriggerLoader
+            anchors.fill: parent
+            active: edgeTriggerWindow.visible
+
+            sourceComponent: Component {
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    acceptedButtons: Qt.NoButton
+                    onEntered: {
+                        // Cursor reached the screen edge — show the dock
+                        root.isDockHovered = true
+                        autohideLeaveTimer.restart()
+                    }
                 }
             }
         }

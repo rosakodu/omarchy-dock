@@ -17,6 +17,12 @@ PanelWindow {
     property var shell: null
     property bool opened: false
 
+    onOpenedChanged: {
+        if (pickerWindow.root && typeof pickerWindow.root.handleWidgetPickerOpenedChanged === "function") {
+            pickerWindow.root.handleWidgetPickerOpenedChanged(opened)
+        }
+    }
+
     WlrLayershell.namespace: "omarchy-menu"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: pickerWindow.opened ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
@@ -24,7 +30,7 @@ PanelWindow {
     color: "transparent"
     screen: (pickerWindow.dockWindow && pickerWindow.dockWindow.screen) ? pickerWindow.dockWindow.screen : (Quickshell.screens && Quickshell.screens.length > 0 ? Quickshell.screens[0] : null)
 
-    visible: opened
+    visible: opened && pickerWindow.root && pickerWindow.root.dockRevealed
 
     anchors {
         top: true

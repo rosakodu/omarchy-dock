@@ -14,15 +14,16 @@ PanelWindow {
     required property var root
     required property var dockWindow
     property alias stackCard: stackCard
+    screen: stackWindow.dockWindow ? stackWindow.dockWindow.screen : null
 
-    visible: stackWindow.root.isStackOpen && stackWindow.root.opened && stackWindow.root.pluginEnabled && stackWindow.root.dockEnabled
+    visible: stackWindow.root.isStackOpen && stackWindow.root.dockRevealed
 
         WlrLayershell.namespace: "omarchy-dock-stack"
         WlrLayershell.layer: WlrLayer.Top
         WlrLayershell.keyboardFocus: stackWindow.root.isEditingFolderTitle
             ? WlrKeyboardFocus.Exclusive
             : (stackWindow.root.isStackOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None)
-        exclusionMode: ExclusionMode.Auto
+    exclusionMode: stackWindow.root.reservesSpace ? ExclusionMode.Auto : ExclusionMode.Ignore
         color: "transparent"
 
         anchors {
@@ -823,4 +824,3 @@ PanelWindow {
                 }
             }
         }
-
