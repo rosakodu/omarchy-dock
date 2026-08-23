@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import Quickshell.Io
 import qs.Commons
 import qs.Ui
+import "DockSettings.js" as DockSettings
 
 BarWidget {
   id: root
@@ -13,7 +14,10 @@ BarWidget {
 
   property string settingsPath: Quickshell.env("HOME") + "/.config/omarchy/dock-settings.json"
   property bool dockEnabled: true
-  property bool autohide: false
+  property string visibilityMode: "always"
+  readonly property bool autohide: root.visibilityMode !== "always"
+  property string spaceMode: "exclusive"
+  property string visibleWorkspace: "all"
   property bool showFolderTitles: true
   property bool showBadges: true
   property bool widgetsEnabled: true
@@ -39,11 +43,12 @@ BarWidget {
       var txt = settingsFile.text()
       if (txt && txt.trim().length > 0) {
         var s = JSON.parse(txt)
+        var normalized = DockSettings.normalize(s)
+        root.visibilityMode = normalized.visibilityMode
+        root.spaceMode = normalized.spaceMode
+        root.visibleWorkspace = normalized.visibleWorkspace
         if (s && s.dockEnabled !== undefined) {
           root.dockEnabled = (s.dockEnabled === true)
-        }
-        if (s && s.autohide !== undefined) {
-          root.autohide = (s.autohide === true)
         }
         if (s && s.showFolderTitles !== undefined) {
           root.showFolderTitles = (s.showFolderTitles === true)
@@ -80,7 +85,10 @@ BarWidget {
     } catch(e) {}
 
     s.dockEnabled = root.dockEnabled
-    s.autohide = root.autohide
+    s.visibilityMode = root.visibilityMode
+    s.autohide = DockSettings.legacyAutohide(root.visibilityMode)
+    s.spaceMode = root.spaceMode
+    s.visibleWorkspace = root.visibleWorkspace
     s.showFolderTitles = root.showFolderTitles
     s.showBadges = root.showBadges
     s.widgetsEnabled = root.widgetsEnabled
@@ -110,9 +118,36 @@ BarWidget {
   }
 
   function setAutohide(val) {
-    root.autohide = val
+    root.visibilityMode = val ? "hover" : "always"
     if (root.bar && typeof root.bar.run === "function") {
       root.bar.run("omarchy-shell rosakodu.dock setAutohide " + (val ? "true" : "false"))
+    } else {
+      saveSettings()
+    }
+  }
+
+  function setVisibilityMode(mode) {
+    root.visibilityMode = DockSettings.normalizeVisibilityMode(mode, false)
+    if (root.bar && typeof root.bar.run === "function") {
+      root.bar.run("omarchy-shell rosakodu.dock setVisibilityMode " + root.visibilityMode)
+    } else {
+      saveSettings()
+    }
+  }
+
+  function setSpaceMode(mode) {
+    root.spaceMode = DockSettings.normalizeSpaceMode(mode)
+    if (root.bar && typeof root.bar.run === "function") {
+      root.bar.run("omarchy-shell rosakodu.dock setSpaceMode " + root.spaceMode)
+    } else {
+      saveSettings()
+    }
+  }
+
+  function setVisibleWorkspace(workspace) {
+    root.visibleWorkspace = DockSettings.normalizeVisibleWorkspace(workspace)
+    if (root.bar && typeof root.bar.run === "function") {
+      root.bar.run("omarchy-shell rosakodu.dock setVisibleWorkspace " + root.visibleWorkspace)
     } else {
       saveSettings()
     }
@@ -290,6 +325,7 @@ BarWidget {
 
             ColumnLayout {
               Layout.fillWidth: true
+              Layout.minimumWidth: 0
               Layout.alignment: Qt.AlignVCenter
               spacing: 2
 
@@ -365,10 +401,12 @@ BarWidget {
 
             ColumnLayout {
               Layout.fillWidth: true
+              Layout.minimumWidth: 0
               Layout.alignment: Qt.AlignVCenter
               spacing: 2
 
               Text {
+                Layout.fillWidth: true
                 text: "Autohide dock"
                 font.family: Style.font.family
                 font.pixelSize: 12
@@ -377,10 +415,15 @@ BarWidget {
               }
 
               Text {
-                text: "Hide dock when not hovered"
+                Layout.fillWidth: true
+                text: root.autohide
+                  ? (root.visibilityMode === "keybind" ? "Shortcut reveal with timed hide" : "Hide dock when not hovered")
+                  : "Keep the dock visible by default"
                 font.family: Style.font.family
                 font.pixelSize: 10
                 color: Color.muted
+                elide: Text.ElideRight
+                maximumLineCount: 1
               }
             }
 
@@ -389,6 +432,8 @@ BarWidget {
               id: switchTrack
               Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
               Layout.preferredWidth: 36
+              Layout.minimumWidth: 36
+              Layout.maximumWidth: 36
               Layout.preferredHeight: 20
               width: 36
               height: 20
@@ -420,7 +465,65 @@ BarWidget {
           }
         }
 
-        // Toggle Folder Names Row
+      Dropdown {
+        Layout.fillWidth: true
+        enabled: root.dockEnabled && root.autohide
+        opacity: enabled ? 1.0 : 0.4
+        label: "Automatic reveal method"
+        value: root.visibilityMode === "keybind" ? "keybind" : "hover"
+        options: [
+          { value: "hover", label: "Screen-edge hover" },
+          { value: "keybind", label: "Keyboard shortcut" }
+        ]
+        onChanged: function(value) { root.setVisibilityMode(value) }
+      }
+
+      Text {
+        Layout.fillWidth: true
+        visible: root.dockEnabled
+        text: "Keyboard toggle (when autohide is off or Keyboard shortcut is selected): omarchy-shell -q rosakodu.dock toggleReveal"
+        wrapMode: Text.WordWrap
+        font.family: Style.font.family
+        font.pixelSize: 9
+        color: Color.muted
+      }
+
+      Dropdown {
+        Layout.fillWidth: true
+        enabled: root.dockEnabled
+        opacity: enabled ? 1.0 : 0.4
+        label: "Show on workspace"
+        value: root.visibleWorkspace
+        options: [
+          { value: "all", label: "All workspaces" },
+          { value: "1", label: "Workspace 1" },
+          { value: "2", label: "Workspace 2" },
+          { value: "3", label: "Workspace 3" },
+          { value: "4", label: "Workspace 4" },
+          { value: "5", label: "Workspace 5" },
+          { value: "6", label: "Workspace 6" },
+          { value: "7", label: "Workspace 7" },
+          { value: "8", label: "Workspace 8" },
+          { value: "9", label: "Workspace 9" },
+          { value: "10", label: "Workspace 10" }
+        ]
+        onChanged: function(value) { root.setVisibleWorkspace(value) }
+      }
+
+      Dropdown {
+        Layout.fillWidth: true
+        enabled: root.dockEnabled
+        opacity: enabled ? 1.0 : 0.4
+        label: "Window layout"
+        value: root.spaceMode
+        options: [
+          { value: "exclusive", label: "Reserve screen space" },
+          { value: "overlay", label: "Overlay tiled windows" }
+        ]
+        onChanged: function(value) { root.setSpaceMode(value) }
+      }
+
+      // Toggle Folder Names Row
         Rectangle {
           id: folderTitlesRow
           Layout.fillWidth: true
