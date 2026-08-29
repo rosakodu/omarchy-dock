@@ -391,6 +391,36 @@ Item {
         return monitor ? root.screenForMonitorName(monitor.name) : null
     }
 
+    function screenShowsDock(screen) {
+        if (!screen) return false
+        var target = DockSettings.dockScreenTarget(
+            root.visibleWorkspace,
+            root.visibilityMode,
+            root.visibilityOverride
+        )
+        var configuredName = (root.configuredWorkspace && root.configuredWorkspace.monitor)
+            ? String(root.configuredWorkspace.monitor.name || "")
+            : ""
+        var focusedName = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+        return DockSettings.screenShowsDock(
+            target,
+            screen.name,
+            configuredName,
+            root.keyboardTargetMonitorName,
+            focusedName
+        )
+    }
+
+    function anyDockSurfaceHovered() {
+        var instances = dockVariants.instances
+        if (!instances) return false
+        for (var i = 0; i < instances.length; i++) {
+            var handler = instances[i] ? instances[i].hoverHandler : null
+            if (handler && handler.hovered) return true
+        }
+        return false
+    }
+
     function focusedWorkspaceForKeyboardToggle() {
         var monitorWorkspace = Hyprland.focusedMonitor
             ? Hyprland.focusedMonitor.activeWorkspace
@@ -425,6 +455,10 @@ Item {
         if (target === "captured") {
             var keyboardScreen = root.screenForMonitorName(root.keyboardTargetMonitorName)
             if (keyboardScreen) return keyboardScreen
+        }
+        if (target === "all") {
+            var focusedForAll = root.screenForMonitor(Hyprland.focusedMonitor)
+            if (focusedForAll) return focusedForAll
         }
         if (target === "focused") {
             var focusedScreen = root.screenForMonitor(Hyprland.focusedMonitor)
@@ -478,13 +512,30 @@ Item {
     function evaluateHoverState() {
         if (!root.autohide) return
         var anyOpenWidget = checkWidgetPanelsOpen()
-        var isDockWinHovered = !root.shouldSlideOut && dockHoverHandler && dockHoverHandler.hovered
+        var isDockWinHovered = !root.shouldSlideOut && root.anyDockSurfaceHovered()
         var anyHover = isDockWinHovered || root.isStackHovered || root.isMenuHovered || root.isWidgetPanelHovered || anyOpenWidget
         if (anyHover) {
             autohideLeaveTimer.stop()
             root.isDockHovered = true
         } else {
             autohideLeaveTimer.restart()
+        }
+    }
+
+    Timer {
+        id: autohideLeaveTimer
+        interval: 1500
+        repeat: false
+        onTriggered: {
+            if (!root.autohide) return
+            var anyOpenWidget = root.checkWidgetPanelsOpen()
+            var anyHover = root.anyDockSurfaceHovered() || root.isStackHovered || root.isMenuHovered || root.isWidgetPanelHovered || anyOpenWidget
+            if (!anyHover) {
+                root.isDockHovered = false
+                if (DockSettings.shouldAutoDismissKeyboardReveal(root.visibilityMode, root.visibilityOverride)) {
+                    root.visibilityOverride = DockSettings.VISIBILITY_OVERRIDE_FOLLOW
+                }
+            }
         }
     }
 
@@ -632,9 +683,6 @@ Item {
         root.keyboardTargetMonitorName = ""
     }
 
-    onEffectiveDockScreenChanged: {
-        remapTimer.restart()
-    }
 
     readonly property var widgetLayout: DockModel.getDockWidgetLayout(root.showAppMenu, root.appMenuPosition, root.widgetsEnabled, root.dockWidgets, root.widgetPosition)
     readonly property var leftWidgetsList: widgetLayout.leftWidgets || []
@@ -706,7 +754,11 @@ Item {
     readonly property real itemsWidth: (root.dockItems.length * root.slotSize)
 
     // Dynamic max items limit for dock bar based on logical screen dimensions & scale (15 items on 1080p @ 1.6x, scales dynamically for Ultrawide 21:9 / 32:9)
-    readonly property var activeScreen: (dockWindow && dockWindow.screen) ? dockWindow.screen : (Quickshell.screens.length > 0 ? Quickshell.screens[0] : null)
+    readonly property var activeScreen: {
+        var focused = root.screenForMonitor(Hyprland.focusedMonitor)
+        if (focused) return focused
+        return (Quickshell.screens && Quickshell.screens.length > 0) ? Quickshell.screens[0] : null
+    }
     readonly property real logicalScreenWidth: (activeScreen && activeScreen.width > 0) ? activeScreen.width : 1200
     readonly property real logicalScreenHeight: (activeScreen && activeScreen.height > 0) ? activeScreen.height : 675
     readonly property int maxDockItems: {
@@ -1724,7 +1776,7 @@ Item {
     HyprlandFocusGrab {
         id: editGrab
         active: root.isEditMode && !root.isStackOpen && !root.isMenuOpen
-        windows: [dockWindow]
+        windows: dockVariants.instances
         onCleared: {
             root.isEditMode = false
         }
@@ -1732,7 +1784,8 @@ Item {
 
     onIsEditModeChanged: {
         if (isEditMode) {
-            dockSurface.forceActiveFocus()
+            var win = root.dockWindow
+            if (win && win.surface) win.surface.forceActiveFocus()
         }
     }
 
@@ -1757,11 +1810,36 @@ Item {
         }
     }
 
-    // 1. The Main Solid Dock Window
-    PanelWindow {
-        id: dockWindow
-        screen: root.effectiveDockScreen
-        visible: root.dockMapped
+    readonly property var dockWindow: {
+        var instances = dockVariants.instances
+        var count = instances ? instances.length : 0
+        var focusedName = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+        for (var i = 0; i < count; i++) {
+            var win = instances[i]
+            if (win && win.screen && String(win.screen.name || "") === focusedName)
+                return win
+        }
+        return count > 0 ? instances[0] : null
+    }
+
+    // One layer surface per output, matching the Omarchy bar.
+    Variants {
+        id: dockVariants
+        model: Quickshell.screens
+
+        delegate: Component {
+            PanelWindow {
+                id: dockLayer
+                required property var modelData
+                property alias surface: dockSurface
+                property alias hoverHandler: dockHoverHandler
+                screen: modelData
+                visible: root.dockMapped && root.screenShowsDock(modelData) && !remapGuard.remapping
+
+                ScreenMoveRemap {
+                    id: remapGuard
+                    window: dockLayer
+                }
 
         WlrLayershell.namespace: "omarchy-dock"
         WlrLayershell.layer: WlrLayer.Top
@@ -1791,24 +1869,6 @@ Item {
             enabled: root.autohide && !root.shouldSlideOut
             onHoveredChanged: {
                 root.evaluateHoverState()
-            }
-        }
-
-        // 1.5-second delay before dock autohides when cursor leaves all dock/folder/widget elements
-        Timer {
-            id: autohideLeaveTimer
-            interval: 1500
-            repeat: false
-            onTriggered: {
-                if (!root.autohide) return
-                var anyOpenWidget = root.checkWidgetPanelsOpen()
-                var anyHover = (dockHoverHandler && dockHoverHandler.hovered) || root.isStackHovered || root.isMenuHovered || root.isWidgetPanelHovered || anyOpenWidget
-                if (!anyHover) {
-                    root.isDockHovered = false
-                    if (DockSettings.shouldAutoDismissKeyboardReveal(root.visibilityMode, root.visibilityOverride)) {
-                        root.visibilityOverride = DockSettings.VISIBILITY_OVERRIDE_FOLLOW
-                    }
-                }
             }
         }
 
@@ -1969,7 +2029,7 @@ Item {
                                 source: root.getWidgetSource(modelData)
                                 onLoaded: {
                                     if (item) {
-                                        root.configureHostedWidget(item, modelData)
+                                        root.configureHostedWidget(item, modelData, screenCenterAnchor)
                                         if (modelData === "omarchy.clock") {
                                             if (item.displayText !== undefined) root.clockDisplayText = item.displayText
                                             if (item.displayTextChanged) {
@@ -2006,7 +2066,7 @@ Item {
                                 }
                                 var target = leftWidgetLoader.item
                                 if (target) {
-                                    root.configureHostedWidget(target, modelData)
+                                    root.configureHostedWidget(target, modelData, screenCenterAnchor)
                                     if (mouse.button === Qt.RightButton) {
                                         if (typeof target.cycleFormat === "function") {
                                             target.cycleFormat()
@@ -2265,7 +2325,7 @@ Item {
                                 source: root.getWidgetSource(modelData)
                                 onLoaded: {
                                     if (item) {
-                                        root.configureHostedWidget(item, modelData)
+                                        root.configureHostedWidget(item, modelData, screenCenterAnchor)
                                         if (modelData === "omarchy.clock") {
                                             if (item.displayText !== undefined) root.clockDisplayText = item.displayText
                                             if (item.displayTextChanged) {
@@ -2302,7 +2362,7 @@ Item {
                                 }
                                 var target = rightWidgetLoader.item
                                 if (target) {
-                                    root.configureHostedWidget(target, modelData)
+                                    root.configureHostedWidget(target, modelData, screenCenterAnchor)
                                     if (mouse.button === Qt.RightButton) {
                                         if (typeof target.cycleFormat === "function") {
                                             target.cycleFormat()
@@ -2339,9 +2399,11 @@ Item {
                 visible: false
             }
         }
+            }
+        }
     }
 
-    function configureHostedWidget(item, widgetId) {
+    function configureHostedWidget(item, widgetId, anchorItem) {
         if (!item) return
         if (root.loadedWidgetItems.indexOf(item) === -1) root.loadedWidgetItems.push(item)
         if ("bar" in item) item.bar = dockBarContext
@@ -2356,7 +2418,7 @@ Item {
                 p.bar = dockBarContext
             }
             if ("anchorItem" in p) {
-                p.anchorItem = screenCenterAnchor
+                p.anchorItem = anchorItem || null
             }
             if ("opened" in p && p.openedChanged) {
                 p.openedChanged.connect(function() {
@@ -2440,7 +2502,7 @@ Item {
     FolderMenu {
         id: menuWindow
         root: root
-        dockWindow: dockWindow
+        dockWindow: root.dockWindow
         stackWindow: stackWindow
     }
 
@@ -2448,67 +2510,74 @@ Item {
     FolderPopup {
         id: stackWindow
         root: root
-        dockWindow: dockWindow
+        dockWindow: root.dockWindow
     }
 
     // 4. Widget Picker Popup Menu
     WidgetPickerPopup {
         id: widgetPicker
         root: root
-        dockWindow: dockWindow
+        dockWindow: root.dockWindow
         shell: root.shell
     }
 
     // 5. Autohide Edge Trigger — thin invisible strip at screen edge, activates dock reveal
     //    Recreate its input handler after each reveal so stale hover state cannot block re-arming.
-    PanelWindow {
-        id: edgeTriggerWindow
-        screen: dockWindow.screen
-        visible: root.dockAvailable
-                 && root.visibilityMode === "hover"
-                 && root.shouldSlideOut
+    Variants {
+        id: edgeVariants
+        model: Quickshell.screens
 
-        WlrLayershell.namespace: "omarchy-dock-edge"
-        WlrLayershell.layer: WlrLayer.Top
-        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
-        exclusionMode: ExclusionMode.Ignore
-        color: "transparent"
-        mask: Region { item: edgeTriggerLoader }
+        delegate: Component {
+            PanelWindow {
+                id: edgeTriggerWindow
+                required property var modelData
+                screen: modelData
+                visible: root.dockAvailable
+                         && root.visibilityMode === "hover"
+                         && root.shouldSlideOut
+                         && root.screenShowsDock(modelData)
 
-        // Anchor to the same edge as the dock, no margins — hug the screen edge
-        anchors {
-            top:    root.dockScreenPosition === "top"
-            bottom: root.dockScreenPosition === "bottom"
-            left:   root.dockScreenPosition === "left"
-            right:  root.dockScreenPosition === "right"
-        }
+            WlrLayershell.namespace: "omarchy-dock-edge"
+            WlrLayershell.layer: WlrLayer.Top
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+            exclusionMode: ExclusionMode.Ignore
+            color: "transparent"
+            mask: Region { item: edgeTriggerLoader }
 
-        margins {
-            top: 0
-            bottom: 0
-            left: 0
-            right: 0
-        }
+            anchors {
+                top:    root.dockScreenPosition === "top"
+                bottom: root.dockScreenPosition === "bottom"
+                left:   root.dockScreenPosition === "left"
+                right:  root.dockScreenPosition === "right"
+            }
 
-        implicitWidth:  root.isVertical ? root.effectiveAutohideEdgeDepth : Math.max(root.slotSize + 8, root.totalDockDimension + 14)
-        implicitHeight: root.isVertical ? Math.max(root.slotSize + 8, root.totalDockDimension + 14) : root.effectiveAutohideEdgeDepth
+            margins {
+                top: 0
+                bottom: 0
+                left: 0
+                right: 0
+            }
 
-        Loader {
-            id: edgeTriggerLoader
-            anchors.fill: parent
-            active: edgeTriggerWindow.visible
+            implicitWidth:  root.isVertical ? root.effectiveAutohideEdgeDepth : Math.max(root.slotSize + 8, root.totalDockDimension + 14)
+            implicitHeight: root.isVertical ? Math.max(root.slotSize + 8, root.totalDockDimension + 14) : root.effectiveAutohideEdgeDepth
 
-            sourceComponent: Component {
-                MouseArea {
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    acceptedButtons: Qt.NoButton
-                    onEntered: {
-                        // Cursor reached the screen edge — show the dock
-                        root.isDockHovered = true
-                        autohideLeaveTimer.restart()
+            Loader {
+                id: edgeTriggerLoader
+                anchors.fill: parent
+                active: edgeTriggerWindow.visible
+
+                sourceComponent: Component {
+                    MouseArea {
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        acceptedButtons: Qt.NoButton
+                        onEntered: {
+                            root.isDockHovered = true
+                            autohideLeaveTimer.restart()
+                        }
                     }
                 }
+            }
             }
         }
     }

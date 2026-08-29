@@ -165,16 +165,30 @@ TestCase {
     function test_dockScreenTarget_data() {
         return [
             { tag: "explicit-workspace", workspace: "7", mode: "hover", override: 0, expected: "configured" },
-            { tag: "internal-capture", workspace: "all", mode: "hover", override: 1, expected: "captured" },
-            { tag: "hover-all", workspace: "all", mode: "hover", override: 0, expected: "focused" },
-            { tag: "hover-all-hidden", workspace: "all", mode: "hover", override: -1, expected: "focused" },
-            { tag: "keybind-follow", workspace: "all", mode: "keybind", override: 0, expected: "base" },
-            { tag: "always-follow", workspace: "all", mode: "always", override: 0, expected: "base" }
+            { tag: "hover-all", workspace: "all", mode: "hover", override: 0, expected: "all" },
+            { tag: "hover-all-hidden", workspace: "all", mode: "hover", override: -1, expected: "all" },
+            { tag: "keybind-follow", workspace: "all", mode: "keybind", override: 0, expected: "all" },
+            { tag: "always-follow", workspace: "all", mode: "always", override: 0, expected: "all" }
         ]
     }
 
     function test_dockScreenTarget(data) {
         compare(DockSettings.dockScreenTarget(data.workspace, data.mode, data.override), data.expected)
+    }
+
+    function test_screenShowsDock_data() {
+        return [
+            { tag: "all-any-screen", target: "all", screen: "DP-1", configured: "eDP-1", captured: "", focused: "eDP-1", expected: true },
+            { tag: "configured-match", target: "configured", screen: "eDP-1", configured: "eDP-1", captured: "", focused: "DP-1", expected: true },
+            { tag: "configured-miss", target: "configured", screen: "DP-1", configured: "eDP-1", captured: "", focused: "DP-1", expected: false },
+            { tag: "focused-match", target: "focused", screen: "DP-1", configured: "", captured: "", focused: "DP-1", expected: true },
+            { tag: "focused-miss", target: "focused", screen: "eDP-1", configured: "", captured: "", focused: "DP-1", expected: false },
+            { tag: "missing-screen", target: "all", screen: "", configured: "", captured: "", focused: "DP-1", expected: false }
+        ]
+    }
+
+    function test_screenShowsDock(data) {
+        compare(DockSettings.screenShowsDock(data.target, data.screen, data.configured, data.captured, data.focused), data.expected)
     }
 
     function test_visibleDockClosesWithoutRetargeting() {

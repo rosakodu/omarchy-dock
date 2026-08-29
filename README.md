@@ -18,7 +18,7 @@ A modern, highly polished, and fully native application dock plugin for **Omarch
 - 👁️ **Smart Cursor Hiding** — The mouse cursor is automatically hidden (`Qt.BlankCursor`) during mouse wheel scrolling and folder title hover to ensure an unobstructed view of the status capsule and animations.
 - 🌐 **Full Web Apps (PWA) Support** — Automatic domain matching for Chrome/Chromium web apps (Google Maps, Google Contacts, WhatsApp, YouTube, Discord, etc.) with native GTK theme icons.
 - ⚡ **Zero-Flicker Boot & Tile Lift** — Two-phase initialization instantly reserves Hyprland exclusive space to lift tiled windows smoothly, followed by a monolithic fade-in once all vector theme icons are loaded.
-- 🧭 **Dynamic Auto-Positioning** — Automatically adapts its position opposite to the Omarchy status bar (top $\leftrightarrow$ bottom, left $\leftrightarrow$ right).
+- 🧭 **Dynamic Auto-Positioning** — Automatically adapts its position opposite to the Omarchy status bar (top $\leftrightarrow$ bottom, left $\leftrightarrow$ right) and draws a dock on every connected monitor.
 - ⏱️ **Flexible Visibility** — Keep the dock visible, reveal it from the screen edge, or toggle it through a Hyprland keybinding.
 - 🪟 **Native Overlay Mode** — Float the dock above full-screen/tiling windows without shifting Hyprland window arrangements (macOS / Dash to Dock behavior).
 - 🔔 **Real-Time Notification Badges** — Dynamic unread badges on app icons aggregated from D-Bus notifications, Hyprland dwell timers, and window titles.
@@ -57,7 +57,7 @@ omarchy plugin add https://github.com/rosakodu/omarchy-dock.git --enable
 
 ## ⚙️ Configuration
 
-The dock works out of the box with zero configuration required.
+The dock works out of the box with zero configuration required. With `visibleWorkspace` set to `all` (the default), a dock is created on every Hyprland monitor — the same per-output pattern as the Omarchy status bar. Pinning the dock to a specific workspace still shows it only on the monitor that currently displays that workspace.
 
 You can customize options directly via the `···` status bar widget or in `~/.config/omarchy/dock-settings.json`:
 

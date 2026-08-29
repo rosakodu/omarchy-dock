@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "rosakodu.dock",
   "name": "Dock",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "author": "rosakodu",
   "license": "MIT",
   "description": "Native animated application dock for Omarchy Quattro with dynamic positioning, Hyprland window tracking, Drag & Drop, and seamless Omarchy theme integration.",

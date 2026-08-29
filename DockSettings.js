@@ -90,8 +90,16 @@ function releaseInteractionVisibilityOverride(owned, previousOverride, currentOv
 
 function dockScreenTarget(visibleWorkspace, visibilityMode, visibilityOverride) {
     if (normalizeVisibleWorkspace(visibleWorkspace) !== "all") return "configured"
-    if (normalizeVisibilityMode(visibilityMode, false) === VISIBILITY_HOVER) return "focused"
-    return "base"
+    return "all"
+}
+
+function screenShowsDock(target, screenName, configuredMonitorName, capturedMonitorName, focusedMonitorName) {
+    var name = String(screenName || "")
+    if (name === "") return false
+    if (target === "configured") return name === String(configuredMonitorName || "")
+    if (target === "captured") return name === String(capturedMonitorName || "")
+    if (target === "focused") return name === String(focusedMonitorName || "")
+    return true
 }
 
 function workspaceIdentity(workspace) {
