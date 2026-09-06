@@ -39,6 +39,9 @@ var FALLBACK_MAP = {
     "google-maps": "google-maps",
     "google-messages": "google-messages",
     "google-photos": "google-photos",
+    "transmission": "transmission-gtk",
+    "transmission-gtk": "transmission-gtk",
+    "com.transmissionbt.transmission": "transmission-gtk",
     "youtube": "youtube"
 };
 

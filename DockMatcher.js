@@ -83,6 +83,13 @@ var KNOWN_APP_DEFAULTS = {
     "fastfetch": { id: "fastfetch", icon: "fastfetch", rawIcon: "fastfetch", name: "Fastfetch" },
     "brave": { id: "brave-browser", icon: "brave-desktop", rawIcon: "brave-desktop", name: "Brave" },
     "brave-browser": { id: "brave-browser", icon: "brave-desktop", rawIcon: "brave-desktop", name: "Brave" },
+    "transmission": { id: "transmission-gtk", icon: "transmission-gtk", rawIcon: "transmission-gtk", name: "Transmission" },
+    "transmission-gtk": { id: "transmission-gtk", icon: "transmission-gtk", rawIcon: "transmission-gtk", name: "Transmission" },
+    "transmission-qt": { id: "transmission-qt", icon: "transmission-qt", rawIcon: "transmission-qt", name: "Transmission" },
+    "com.transmissionbt.transmission": { id: "transmission-gtk", icon: "transmission-gtk", rawIcon: "transmission-gtk", name: "Transmission" },
+    "yandex-browser": { id: "yandex-browser", icon: "yandex-browser", rawIcon: "yandex-browser", name: "Yandex Browser" },
+    "yandex-browser-stable": { id: "yandex-browser", icon: "yandex-browser", rawIcon: "yandex-browser", name: "Yandex Browser" },
+    "ru.yandex.desktop.browser": { id: "yandex-browser", icon: "yandex-browser", rawIcon: "yandex-browser", name: "Yandex Browser" },
     "x": { id: "X", icon: "x", rawIcon: "x", name: "X" },
     "x.com": { id: "X", icon: "x", rawIcon: "x", name: "X" },
     "chrome-x.com__-default": { id: "X", icon: "x", rawIcon: "x", name: "X" },
@@ -144,6 +151,13 @@ var KNOWN_APP_DEFAULTS = {
 var FALLBACK_ICON_CANDIDATES = {
     "brave": ["brave-desktop", "brave-browser", "brave"],
     "brave-browser": ["brave-desktop", "brave-browser", "brave"],
+    "transmission": ["transmission-gtk", "transmission", "com.transmissionbt.Transmission", "transmission-qt"],
+    "transmission-gtk": ["transmission-gtk", "transmission", "com.transmissionbt.Transmission", "transmission-qt"],
+    "transmission-qt": ["transmission-qt", "transmission", "com.transmissionbt.Transmission", "transmission-gtk"],
+    "com.transmissionbt.transmission": ["transmission-gtk", "transmission", "com.transmissionbt.Transmission", "transmission-qt"],
+    "yandex-browser": ["yandex-browser", "yandex-browser-stable", "ru.yandex.desktop.browser", "yandex"],
+    "yandex-browser-stable": ["yandex-browser", "yandex-browser-stable", "ru.yandex.desktop.browser", "yandex"],
+    "ru.yandex.desktop.browser": ["yandex-browser", "yandex-browser-stable", "ru.yandex.desktop.browser", "yandex"],
     "x": ["x", "twitter-x", "twitter", "solstice-twitter-twitter", "unity-webapps-twitter"],
     "x.com": ["x", "twitter-x", "twitter", "solstice-twitter-twitter", "unity-webapps-twitter"],
     "chrome-x.com__-default": ["x", "twitter-x", "twitter"],
@@ -311,6 +325,20 @@ function getCandidates(rawIcon, icon, appId) {
     var lastPart = clean.split(".").pop();
     add(lastPart);
 
+    if (clean.indexOf("com.transmissionbt.transmission") === 0 || clean === "transmission" || clean === "transmission-gtk" || clean === "transmission-qt") {
+        add("transmission-gtk");
+        add("transmission");
+        add("com.transmissionbt.Transmission");
+        add("transmission-qt");
+    }
+
+    if (clean.indexOf("steam_app_") === 0) {
+        var sGameId = clean.replace(/^steam_app_/, "");
+        add("steam_icon_" + sGameId);
+        add("steam_app_" + sGameId);
+        add("steam");
+    }
+
     if (FALLBACK_ICON_CANDIDATES[clean]) {
         var fb = FALLBACK_ICON_CANDIDATES[clean];
         for (var i = 0; i < fb.length; i++) add(fb[i]);
@@ -385,7 +413,7 @@ function normalizeKey(str) {
 function extractChromeDomain(appClass) {
     if (!appClass) return "";
     var s = String(appClass).toLowerCase();
-    if (s === "brave-browser" || s === "chromium-browser" || s === "chrome-browser") {
+    if (s === "brave-browser" || s === "chromium-browser" || s === "chrome-browser" || s === "yandex-browser" || s === "yandex-browser-stable") {
         return "";
     }
     if (s.indexOf("chrome-") === 0 || s.indexOf("chromium-") === 0 || s.indexOf("brave-") === 0 || s.indexOf("edge-") === 0) {
@@ -415,6 +443,47 @@ function findEntry(desktopEntries, appId) {
         var target = id.toLowerCase();
         var targetNorm = normalizeKey(target);
         var chromeDom = extractChromeDomain(id);
+
+        // Transmission GTK Wayland dynamic app ID resolution (e.g. com.transmissionbt.transmission_54_620133)
+        if (target.indexOf("com.transmissionbt.transmission") === 0 || target === "transmission" || target === "transmission-gtk" || target === "transmission-qt") {
+            for (var tr = 0; tr < list.length; tr++) {
+                var tre = unwrapEntry(list[tr]);
+                if (!tre) continue;
+                var trId = stripDesktop(tre.id || "").toLowerCase();
+                var trExec = String(tre.exec || "").toLowerCase().split(/\s+/)[0].split("/").pop();
+                if (trId === "transmission-gtk" || trId === "transmission-qt" || trId === "transmission" || trId === "com.transmissionbt.transmission" ||
+                    trExec === "transmission-gtk" || trExec === "transmission-qt" || trExec === "transmission") {
+                    return tre;
+                }
+            }
+        }
+
+        // Steam game window resolution (e.g. steam_app_1700 matching steam://rungameid/1700 or steam_icon_1700)
+        if (target.indexOf("steam_app_") === 0) {
+            var gameId = target.replace(/^steam_app_/, "");
+            for (var st = 0; st < list.length; st++) {
+                var ste = unwrapEntry(list[st]);
+                if (!ste) continue;
+                var steExec = String(ste.exec || "").toLowerCase();
+                var steIcon = String(ste.icon || "").toLowerCase();
+                if (steExec.indexOf("rungameid/" + gameId) !== -1 || steIcon === "steam_icon_" + gameId || steIcon === "steam_app_" + gameId) {
+                    return ste;
+                }
+            }
+        }
+
+        // Yandex Browser resolution (yandex-browser, yandex-browser-stable, ru.yandex.desktop.browser)
+        if (target === "yandex-browser" || target === "yandex-browser-stable" || target === "ru.yandex.desktop.browser") {
+            for (var yb = 0; yb < list.length; yb++) {
+                var ybe = unwrapEntry(list[yb]);
+                if (!ybe) continue;
+                var ybeId = stripDesktop(ybe.id || "").toLowerCase();
+                var ybeExec = String(ybe.exec || "").toLowerCase().split(/\s+/)[0].split("/").pop();
+                if (ybeId === "yandex-browser" || ybeId === "ru.yandex.desktop.browser" || ybeExec === "yandex-browser-stable" || ybeExec === "yandex-browser") {
+                    return ybe;
+                }
+            }
+        }
 
         // 1. Exact match on entry.id (with and without .desktop / .exe)
         for (var i = 0; i < list.length; i++) {
@@ -591,7 +660,7 @@ function resolveIcon(entry, appId, appLibrary) {
 
 function isBrowserApp(id) {
     var s = String(id || "").toLowerCase();
-    return s === "google-chrome" || s === "google-chrome-stable" || s === "chromium" || s === "brave" || s === "brave-browser" || s === "microsoft-edge" || s === "opera" || s === "vivaldi";
+    return s === "google-chrome" || s === "google-chrome-stable" || s === "chromium" || s === "brave" || s === "brave-browser" || s === "microsoft-edge" || s === "opera" || s === "vivaldi" || s === "yandex-browser" || s === "yandex-browser-stable" || s === "ru.yandex.desktop.browser";
 }
 
 var KNOWN_TERMINALS = [
@@ -843,6 +912,44 @@ function matchToplevel(toplevel, appId, entry, desktopEntries, cachedCliApp) {
         }
     }
 
+    // Transmission GTK Wayland dynamic app ID matching (com.transmissionbt.transmission_<pid>_<random>)
+    if (appClass.indexOf("com.transmissionbt.transmission") === 0 || cleanId.indexOf("com.transmissionbt.transmission") === 0) {
+        var isTransDockItem = (cleanId === "transmission" || cleanId === "transmission-gtk" || cleanId === "transmission-qt" || cleanId.indexOf("com.transmissionbt.transmission") === 0);
+        if (isTransDockItem) return true;
+        if (entry) {
+            var trEntryId = stripDesktop(entry.id || "").toLowerCase();
+            var trEntryExec = String(entry.exec || "").toLowerCase().split(/\s+/)[0].split("/").pop();
+            if (trEntryId === "transmission-gtk" || trEntryId === "transmission-qt" || trEntryId === "transmission" ||
+                trEntryExec === "transmission-gtk" || trEntryExec === "transmission-qt" || trEntryExec === "transmission") {
+                return true;
+            }
+        }
+    }
+
+    // Steam game matching (e.g. steam_app_1700)
+    if (appClass.indexOf("steam_app_") === 0) {
+        if (cleanId === "steam") return false;
+        var steamGameId = appClass.replace(/^steam_app_/, "");
+        if (cleanId === appClass || cleanId === ("steam_icon_" + steamGameId)) return true;
+        if (entry) {
+            var stExec = String(entry.exec || "").toLowerCase();
+            var stIcon = String(entry.icon || "").toLowerCase();
+            if (stExec.indexOf("rungameid/" + steamGameId) !== -1 || stIcon === "steam_icon_" + steamGameId || stIcon === "steam_app_" + steamGameId) {
+                return true;
+            }
+        }
+    }
+
+    // Yandex Browser matching
+    if (appClass === "yandex-browser" || appClass === "yandex-browser-stable") {
+        if (cleanId === "yandex-browser" || cleanId === "yandex-browser-stable" || cleanId === "ru.yandex.desktop.browser") return true;
+        if (entry) {
+            var yId = stripDesktop(entry.id || "").toLowerCase();
+            var yExec = String(entry.exec || "").toLowerCase().split(/\s+/)[0].split("/").pop();
+            if (yId === "yandex-browser" || yId === "ru.yandex.desktop.browser" || yExec === "yandex-browser-stable" || yExec === "yandex-browser") return true;
+        }
+    }
+
     // 1. Direct class match (with and without .desktop / .exe)
     if (cleanId && (appClass === cleanId || appClassClean === cleanId || appClass === (cleanId + ".desktop") || appClass === (cleanId + ".exe"))) return true;
 
@@ -931,6 +1038,8 @@ function toCanonical(str) {
     if (!raw) return "";
 
     // 1. First-class desktop & Web App service aliases
+    if (raw.indexOf("transmission") !== -1) return "transmission";
+    if (raw.indexOf("yandex-browser") !== -1 || (raw.indexOf("yandex") !== -1 && raw.indexOf("mail") === -1 && raw.indexOf("music") === -1)) return "yandex-browser";
     if (raw.indexOf("telegram") !== -1) return "telegram";
     if (raw.indexOf("whatsapp") !== -1) return "whatsapp";
     if (raw.indexOf("chatgpt") !== -1 || raw.indexOf("openai") !== -1) return "chatgpt";
@@ -1077,6 +1186,38 @@ function findEntryFast(index, appId) {
     if (KNOWN_APP_DEFAULTS[target]) {
         var defId = stripDesktop(KNOWN_APP_DEFAULTS[target].id || "").toLowerCase();
         if (defId && index.byId[defId]) return index.byId[defId];
+    }
+
+    // 5b. Transmission dynamic app ID fast resolution
+    if (target.indexOf("com.transmissionbt.transmission") === 0) {
+        if (index.byId["transmission-gtk"]) return index.byId["transmission-gtk"];
+        if (index.byId["transmission-qt"]) return index.byId["transmission-qt"];
+        if (index.byId["transmission"]) return index.byId["transmission"];
+        if (index.byExec["transmission-gtk"]) return index.byExec["transmission-gtk"];
+        if (index.byExec["transmission-qt"]) return index.byExec["transmission-qt"];
+        if (index.byExec["transmission"]) return index.byExec["transmission"];
+    }
+
+    // 5c. Steam game ID fast resolution
+    if (target.indexOf("steam_app_") === 0) {
+        var fastGameId = target.replace(/^steam_app_/, "");
+        for (var s = 0; s < index.list.length; s++) {
+            var se = index.list[s];
+            if (!se) continue;
+            var sExec = String(se.exec || "").toLowerCase();
+            var sIcon = String(se.icon || "").toLowerCase();
+            if (sExec.indexOf("rungameid/" + fastGameId) !== -1 || sIcon === "steam_icon_" + fastGameId || sIcon === "steam_app_" + fastGameId) {
+                return se;
+            }
+        }
+    }
+
+    // 5d. Yandex Browser fast resolution
+    if (target === "yandex-browser" || target === "yandex-browser-stable" || target === "ru.yandex.desktop.browser") {
+        if (index.byId["yandex-browser"]) return index.byId["yandex-browser"];
+        if (index.byId["ru.yandex.desktop.browser"]) return index.byId["ru.yandex.desktop.browser"];
+        if (index.byExec["yandex-browser-stable"]) return index.byExec["yandex-browser-stable"];
+        if (index.byExec["yandex-browser"]) return index.byExec["yandex-browser"];
     }
 
     // 6. Fallback to deep heuristic search on cache miss
@@ -1408,6 +1549,9 @@ function buildDockItems(pinnedList, toplevelsList, activeToplevel, desktopEntrie
         }
 
         var rEntry = entryFor(rAppId);
+        if ((rAppId.indexOf("com.transmissionbt.transmission") === 0 || rAppId.indexOf("steam_app_") === 0) && rEntry && rEntry.id) {
+            rAppId = stripDesktop(rEntry.id);
+        }
         var rRawIcon = (rEntry && rEntry.icon) ? rEntry.icon : (rAppId || "application-x-executable");
         var rIcon = resolveIcon(rEntry, rAppId, appLibrary);
         var rName = (rEntry && rEntry.name) ? rEntry.name : (rTitle || rAppId || "App");

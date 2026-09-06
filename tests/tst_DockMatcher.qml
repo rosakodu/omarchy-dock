@@ -108,6 +108,141 @@ TestCase {
         compare(res.matching[0], braveTop)
     }
 
+    function test_transmissionMatching() {
+        var transTop = { appId: "com.transmissionbt.transmission_54_620133", title: "Transmission" }
+        var transEntry = { id: "transmission-gtk.desktop", name: "Transmission", icon: "transmission-gtk", exec: "transmission-gtk %U" }
+        var toplevels = [transTop]
+        var assigned = {}
+        var isMin = function(top) { return false }
+
+        // 1. Matching dynamic Wayland app ID against pinned transmission-gtk
+        var res = DockMatcher.collectMatchingToplevels(
+            "transmission-gtk",
+            transEntry,
+            [transEntry],
+            toplevels,
+            assigned,
+            null,
+            transTop,
+            isMin,
+            null
+        )
+        compare(res.windowCount, 1)
+        compare(res.isActive, true)
+        compare(res.matching.length, 1)
+        compare(res.matching[0], transTop)
+
+        // 2. findEntryFast resolves dynamic app ID to transmission-gtk entry
+        var index = DockMatcher.createDesktopEntryIndex([transEntry])
+        var foundEntry = DockMatcher.findEntryFast(index, "com.transmissionbt.transmission_54_620133")
+        verify(foundEntry !== null)
+        compare(foundEntry.id, "transmission-gtk.desktop")
+
+        // 3. buildDockItems with unpinned Transmission window
+        var unpinnedItems = DockMatcher.buildDockItems(
+            [],
+            [transTop],
+            transTop,
+            [transEntry],
+            null,
+            {},
+            {},
+            0,
+            []
+        )
+        compare(unpinnedItems.length, 1)
+        compare(unpinnedItems[0].appId, "transmission-gtk")
+        compare(unpinnedItems[0].name, "Transmission")
+        compare(unpinnedItems[0].isRunning, true)
+        compare(unpinnedItems[0].isActive, true)
+    }
+
+    function test_steamGameMatching() {
+        var arxTop = { appId: "steam_app_1700", title: "Arx Fatalis" }
+        var arxEntry = { id: "Arx Fatalis.desktop", name: "Arx Fatalis", icon: "steam_icon_1700", exec: "steam steam://rungameid/1700" }
+        var steamEntry = { id: "steam.desktop", name: "Steam", icon: "steam", exec: "steam %U" }
+        var toplevels = [arxTop]
+        var assigned = {}
+        var isMin = function(top) { return false }
+
+        // 1. Generic Steam dock item should NOT swallow Steam game window
+        var steamRes = DockMatcher.collectMatchingToplevels(
+            "steam",
+            steamEntry,
+            [steamEntry, arxEntry],
+            toplevels,
+            assigned,
+            null,
+            arxTop,
+            isMin,
+            null
+        )
+        compare(steamRes.windowCount, 0)
+        compare(steamRes.isActive, false)
+
+        // 2. Matching steam_app_1700 against pinned game desktop entry
+        var gameRes = DockMatcher.collectMatchingToplevels(
+            "Arx Fatalis",
+            arxEntry,
+            [steamEntry, arxEntry],
+            toplevels,
+            assigned,
+            null,
+            arxTop,
+            isMin,
+            null
+        )
+        compare(gameRes.windowCount, 1)
+        compare(gameRes.isActive, true)
+        compare(gameRes.matching[0], arxTop)
+
+        // 3. findEntryFast resolves steam_app_1700 to Arx Fatalis desktop entry
+        var index = DockMatcher.createDesktopEntryIndex([steamEntry, arxEntry])
+        var found = DockMatcher.findEntryFast(index, "steam_app_1700")
+        verify(found !== null)
+        compare(found.name, "Arx Fatalis")
+
+        // 4. buildDockItems with unpinned Steam game window
+        var unpinned = DockMatcher.buildDockItems(
+            [],
+            [arxTop],
+            arxTop,
+            [steamEntry, arxEntry],
+            null,
+            {},
+            {},
+            0,
+            []
+        )
+        compare(unpinned.length, 1)
+        compare(unpinned[0].appId, "Arx Fatalis")
+        compare(unpinned[0].name, "Arx Fatalis")
+    }
+
+    function test_yandexBrowserMatching() {
+        var yandexTop = { appId: "yandex-browser", title: "Яндекс — быстрый поиск в интернете" }
+        var yandexEntry = { id: "yandex-browser.desktop", name: "Yandex Browser", icon: "yandex-browser", exec: "/usr/bin/yandex-browser-stable %U" }
+        var toplevels = [yandexTop]
+        var assigned = {}
+        var isMin = function(top) { return false }
+
+        var res = DockMatcher.collectMatchingToplevels(
+            "yandex-browser",
+            yandexEntry,
+            [yandexEntry],
+            toplevels,
+            assigned,
+            null,
+            yandexTop,
+            isMin,
+            null
+        )
+        compare(res.windowCount, 1)
+        compare(res.isActive, true)
+        compare(res.matching.length, 1)
+        compare(res.matching[0], yandexTop)
+    }
+
     // A dock icon numbers its windows in its own sticky creation order, but the
     // helper script resolves a window against Hyprland's client list, whose
     // order changes on its own — a lock screen, a workspace move or a restore
