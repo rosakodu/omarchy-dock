@@ -84,6 +84,30 @@ TestCase {
         compare(resAllMin.isMinimized, true)
     }
 
+    function test_braveBrowserMatching() {
+        var braveTop = { appId: "brave-browser", title: "New Tab - Brave" }
+        var toplevels = [braveTop]
+        var assigned = {}
+        var isMin = function(top) { return false }
+
+        var res = DockMatcher.collectMatchingToplevels(
+            "brave-browser",
+            { id: "brave-browser.desktop", name: "Brave", icon: "brave-desktop" },
+            [],
+            toplevels,
+            assigned,
+            null,
+            braveTop,
+            isMin,
+            null
+        )
+
+        compare(res.windowCount, 1)
+        compare(res.isActive, true)
+        compare(res.matching.length, 1)
+        compare(res.matching[0], braveTop)
+    }
+
     // A dock icon numbers its windows in its own sticky creation order, but the
     // helper script resolves a window against Hyprland's client list, whose
     // order changes on its own — a lock screen, a workspace move or a restore

@@ -81,6 +81,8 @@ var KNOWN_APP_DEFAULTS = {
     "mc": { id: "mc", icon: "mc", rawIcon: "mc", name: "Midnight Commander" },
     "lazygit": { id: "lazygit", icon: "lazygit", rawIcon: "lazygit", name: "LazyGit" },
     "fastfetch": { id: "fastfetch", icon: "fastfetch", rawIcon: "fastfetch", name: "Fastfetch" },
+    "brave": { id: "brave-browser", icon: "brave-desktop", rawIcon: "brave-desktop", name: "Brave" },
+    "brave-browser": { id: "brave-browser", icon: "brave-desktop", rawIcon: "brave-desktop", name: "Brave" },
     "x": { id: "X", icon: "x", rawIcon: "x", name: "X" },
     "x.com": { id: "X", icon: "x", rawIcon: "x", name: "X" },
     "chrome-x.com__-default": { id: "X", icon: "x", rawIcon: "x", name: "X" },
@@ -140,6 +142,8 @@ var KNOWN_APP_DEFAULTS = {
 };
 
 var FALLBACK_ICON_CANDIDATES = {
+    "brave": ["brave-desktop", "brave-browser", "brave"],
+    "brave-browser": ["brave-desktop", "brave-browser", "brave"],
     "x": ["x", "twitter-x", "twitter", "solstice-twitter-twitter", "unity-webapps-twitter"],
     "x.com": ["x", "twitter-x", "twitter", "solstice-twitter-twitter", "unity-webapps-twitter"],
     "chrome-x.com__-default": ["x", "twitter-x", "twitter"],
@@ -381,12 +385,16 @@ function normalizeKey(str) {
 function extractChromeDomain(appClass) {
     if (!appClass) return "";
     var s = String(appClass).toLowerCase();
+    if (s === "brave-browser" || s === "chromium-browser" || s === "chrome-browser") {
+        return "";
+    }
     if (s.indexOf("chrome-") === 0 || s.indexOf("chromium-") === 0 || s.indexOf("brave-") === 0 || s.indexOf("edge-") === 0) {
         var dom = s.replace(/^(chrome|chromium|brave|edge)-/, "")
                    .replace(/__-.*$/, "")
                    .replace(/__.*$/, "")
                    .replace(/_\/.*$/, "")
                    .replace(/^-+/, "");
+        if (dom === "browser") return "";
         return dom;
     }
     return "";
