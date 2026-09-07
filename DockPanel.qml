@@ -932,7 +932,25 @@ Item {
                     if (!root.widgetsEnabled) {
                         root.dockWidgets = []
                     } else {
-                        root.dockWidgets = s.dockWidgets.slice(0, 2)
+                        var newDockWidgets = s.dockWidgets.slice(0, 2)
+                        var oldDockWidgets = Array.isArray(root.dockWidgets) ? root.dockWidgets.slice() : []
+                        var removedWidgets = []
+                        for (var owi = 0; owi < oldDockWidgets.length; owi++) {
+                            var ow = oldDockWidgets[owi]
+                            if (ow && ow !== "omarchy.apps" && newDockWidgets.indexOf(ow) === -1) {
+                                removedWidgets.push(ow)
+                            }
+                        }
+                        if (removedWidgets.length > 0) {
+                            root.widgetSavedPositions = DockModel.switchDockWidgetInBar(root.shell, "", removedWidgets, root.widgetSavedPositions || {}, shellConfigFile)
+                        }
+                        for (var nwi = 0; nwi < newDockWidgets.length; nwi++) {
+                            var nw = newDockWidgets[nwi]
+                            if (nw && nw !== "omarchy.apps") {
+                                root.widgetSavedPositions = DockModel.switchDockWidgetInBar(root.shell, nw, [], root.widgetSavedPositions || {}, shellConfigFile)
+                            }
+                        }
+                        root.dockWidgets = newDockWidgets
                     }
                 } else if (root.widgetsEnabled) {
                     root.dockWidgets = ["omarchy.apps"]
