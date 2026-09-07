@@ -66,9 +66,10 @@ function stripDesktop(id) {
 
 function launchApp(shell, itemData, util) {
     if (!itemData) return;
-    var launchId = itemData.desktopId || itemData.appId || "";
+    var rawLaunchId = itemData.desktopId || itemData.appId || "";
     var appName = itemData.name || "";
-    var cleanId = stripDesktop(launchId).toLowerCase();
+    var canonicalId = stripDesktop(rawLaunchId);
+    var cleanId = canonicalId.toLowerCase();
 
     // Fast-path for cliamp & popular CLI utilities: sets dedicated Wayland app-id on foot
     var cliFastApps = ["cliamp", "org.omarchy.cliamp", "yazi", "btop", "nvim", "helix", "micro", "lazygit", "fastfetch"];
@@ -79,14 +80,19 @@ function launchApp(shell, itemData, util) {
     }
 
     // 1. Primary: Use Omarchy's official shell.appLibrary launcher
+    // Note: Omarchy's AppLibrary.launch appends ".desktop" automatically, so pass canonicalId without extension
     if (shell && shell.appLibrary && typeof shell.appLibrary.launch === "function") {
-        shell.appLibrary.launch(launchId, appName);
+        var libId = canonicalId || cleanId;
+        shell.appLibrary.launch(libId, appName);
         return;
     }
 
     // 2. Fallback: Launch via gtk-launch or direct argv
-    var target = launchId ? (launchId.indexOf(".desktop") !== -1 ? launchId : (launchId + ".desktop")) : "";
+    var target = canonicalId ? (canonicalId + ".desktop") : (cleanId ? (cleanId + ".desktop") : "");
     var argv = parseDesktopExec(itemData.exec);
+    if (argv.length === 0 && cleanId) {
+        argv = [cleanId];
+    }
 
     if (util && typeof util.execArgv === "function") {
         if (target) {
@@ -104,6 +110,8 @@ function launchApp(shell, itemData, util) {
             escapedArgs.push(escapeShellArg(argv[a]));
         }
         fallbackCmd = "uwsm-app -- " + escapedArgs.join(" ");
+    } else if (cleanId) {
+        fallbackCmd = "uwsm-app -- " + escapeShellArg(cleanId);
     }
 
     var cmd = "";

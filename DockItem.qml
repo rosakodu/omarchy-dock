@@ -76,10 +76,21 @@ Item {
                 if (src && src.length > 0 && src.indexOf("application-x-executable") === -1) {
                     return src
                 }
+                var cLow = c.toLowerCase()
+                if (cLow !== c) {
+                    var srcLow = shell.appLibrary.iconSource(cLow)
+                    if (srcLow && srcLow.length > 0 && srcLow.indexOf("application-x-executable") === -1) {
+                        return srcLow
+                    }
+                }
             }
             var qs = Quickshell.iconPath(c, true)
             if (qs && qs.length > 0 && qs.indexOf("application-x-executable") === -1) {
                 return qs
+            }
+            var qsLow = Quickshell.iconPath(c.toLowerCase(), true)
+            if (qsLow && qsLow.length > 0 && qsLow.indexOf("application-x-executable") === -1) {
+                return qsLow
             }
         }
 

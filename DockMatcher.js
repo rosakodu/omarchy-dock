@@ -9,6 +9,16 @@ function stripDesktop(id) {
     return value;
 }
 
+function cleanWindowAppId(id) {
+    var value = stripDesktop(id);
+    if (!value) return "";
+    value = value.replace(/\s*[-_–—]?\s*(?:xwayland|wayland|x11)\s*$/i, "")
+                 .replace(/\s*\((?:xwayland|wayland|x11)\)\s*$/i, "")
+                 .trim();
+    value = value.replace(/\s+v?[0-9]+(?:\.[0-9]+)*[a-z]?\s*$/i, "").trim();
+    return value;
+}
+
 function toArray(list) {
     if (Array.isArray(list)) return list;
     if (list && typeof list.length === "number") {
@@ -20,6 +30,10 @@ function toArray(list) {
 }
 
 var KNOWN_APP_DEFAULTS = {
+    "syncterm": { id: "syncterm", icon: "syncterm", rawIcon: "syncterm", name: "SyncTERM" },
+    "claude": { id: "claude-desktop", icon: "claude-desktop", rawIcon: "claude-desktop", name: "Claude" },
+    "claude-desktop": { id: "claude-desktop", icon: "claude-desktop", rawIcon: "claude-desktop", name: "Claude" },
+    "claude desktop": { id: "claude-desktop", icon: "claude-desktop", rawIcon: "claude-desktop", name: "Claude" },
     "code": { id: "code", icon: "vscode", rawIcon: "vscode", name: "Visual Studio Code" },
     "vscode": { id: "code", icon: "vscode", rawIcon: "vscode", name: "Visual Studio Code" },
     "org.kde.kwrite": { id: "org.kde.kwrite", icon: "kwrite", rawIcon: "kwrite", name: "KWrite" },
@@ -149,6 +163,10 @@ var KNOWN_APP_DEFAULTS = {
 };
 
 var FALLBACK_ICON_CANDIDATES = {
+    "syncterm": ["syncterm", "utilities-terminal", "terminal"],
+    "claude": ["claude-desktop", "claude", "anthropic", "chat-claude"],
+    "claude-desktop": ["claude-desktop", "claude", "anthropic", "chat-claude"],
+    "claude desktop": ["claude-desktop", "claude", "anthropic", "chat-claude"],
     "brave": ["brave-desktop", "brave-browser", "brave"],
     "brave-browser": ["brave-desktop", "brave-browser", "brave"],
     "transmission": ["transmission-gtk", "transmission", "com.transmissionbt.Transmission", "transmission-qt"],
@@ -305,14 +323,42 @@ function getCandidates(rawIcon, icon, appId) {
     function add(c) {
         if (!c) return;
         var s = String(c).trim();
-        if (s.length > 0 && list.indexOf(s) === -1) list.push(s);
+        if (s.length === 0) return;
+        if (list.indexOf(s) === -1) list.push(s);
+        var sLow = s.toLowerCase();
+        if (list.indexOf(sLow) === -1) list.push(sLow);
+
         if (s.indexOf("_") !== -1) {
             var hyp = s.replace(/_/g, "-");
             if (list.indexOf(hyp) === -1) list.push(hyp);
+            var hypLow = hyp.toLowerCase();
+            if (list.indexOf(hypLow) === -1) list.push(hypLow);
         }
         if (s.indexOf("-") !== -1) {
             var und = s.replace(/-/g, "_");
             if (list.indexOf(und) === -1) list.push(und);
+            var undLow = und.toLowerCase();
+            if (list.indexOf(undLow) === -1) list.push(undLow);
+        }
+        if (s.indexOf(" ") !== -1) {
+            var dash = s.replace(/\s+/g, "-");
+            if (list.indexOf(dash) === -1) list.push(dash);
+            var dashLow = dash.toLowerCase();
+            if (list.indexOf(dashLow) === -1) list.push(dashLow);
+        }
+
+        var cleaned = cleanWindowAppId(s);
+        if (cleaned && cleaned !== s) {
+            if (list.indexOf(cleaned) === -1) list.push(cleaned);
+            var cleanedLow = cleaned.toLowerCase();
+            if (list.indexOf(cleanedLow) === -1) list.push(cleanedLow);
+        }
+
+        var firstToken = (cleaned || s).split(/[\s\-_]+/)[0];
+        if (firstToken && firstToken.length >= 3 && firstToken !== s && firstToken !== cleaned) {
+            if (list.indexOf(firstToken) === -1) list.push(firstToken);
+            var firstLow = firstToken.toLowerCase();
+            if (list.indexOf(firstLow) === -1) list.push(firstLow);
         }
     }
     add(rawIcon);
@@ -320,6 +366,8 @@ function getCandidates(rawIcon, icon, appId) {
     add(appId);
     var clean = String(appId || rawIcon || "").toLowerCase().replace(/\.desktop$/, "");
     add(clean);
+    var cleanedAppId = cleanWindowAppId(appId);
+    if (cleanedAppId) add(cleanedAppId);
     var withoutPrefix = clean.replace(/^(org|com|io|net|dev)\.[^.]+\./, "");
     add(withoutPrefix);
     var lastPart = clean.split(".").pop();
@@ -443,6 +491,11 @@ function findEntry(desktopEntries, appId) {
         var target = id.toLowerCase();
         var targetNorm = normalizeKey(target);
         var chromeDom = extractChromeDomain(id);
+        var cleaned = cleanWindowAppId(id);
+        var cleanTarget = cleaned ? cleaned.toLowerCase() : "";
+        var cleanNorm = cleanTarget ? normalizeKey(cleanTarget) : "";
+        var firstToken = cleanTarget ? cleanTarget.split(/[\s\-_]+/)[0] : "";
+        var hypTarget = (cleanTarget && cleanTarget.indexOf(" ") !== -1) ? cleanTarget.replace(/\s+/g, "-") : "";
 
         // Transmission GTK Wayland dynamic app ID resolution (e.g. com.transmissionbt.transmission_54_620133)
         if (target.indexOf("com.transmissionbt.transmission") === 0 || target === "transmission" || target === "transmission-gtk" || target === "transmission-qt") {
@@ -490,7 +543,7 @@ function findEntry(desktopEntries, appId) {
             var entry = unwrapEntry(list[i]);
             if (!entry) continue;
             var entryId = stripDesktop(entry.id || "").toLowerCase();
-            if (entryId === target) return entry;
+            if (entryId === target || (cleanTarget && entryId === cleanTarget) || (hypTarget && entryId === hypTarget) || (firstToken.length >= 3 && entryId === firstToken)) return entry;
         }
 
         // 1b. Exact match on entry.name (case-insensitive)
@@ -498,7 +551,7 @@ function findEntry(desktopEntries, appId) {
             var em = unwrapEntry(list[m]);
             if (!em) continue;
             var emName = String(em.name || "").toLowerCase();
-            if (emName === target) return em;
+            if (emName === target || (cleanTarget && emName === cleanTarget) || (hypTarget && emName === hypTarget) || (firstToken.length >= 3 && emName === firstToken)) return em;
         }
 
         // 1c. Exact URL / Domain match in exec or entry.id for Chrome Web Apps
@@ -528,12 +581,18 @@ function findEntry(desktopEntries, appId) {
             if (targetNorm.length > 0 && (eIdNorm === targetNorm || eNameNorm === targetNorm || eIconNorm === targetNorm)) {
                 return e;
             }
+            if (cleanNorm.length > 0 && (eIdNorm === cleanNorm || eNameNorm === cleanNorm || eIconNorm === cleanNorm)) {
+                return e;
+            }
         }
 
         // 2b. Known App Default ID match (e.g. target "photoshop" matching "Photoshop 2017.desktop")
-        if (KNOWN_APP_DEFAULTS[target]) {
-            var defId = stripDesktop(KNOWN_APP_DEFAULTS[target].id || "").toLowerCase();
-            if (defId && defId !== target) {
+        var defKey = target;
+        if (!KNOWN_APP_DEFAULTS[defKey] && cleanTarget && KNOWN_APP_DEFAULTS[cleanTarget]) defKey = cleanTarget;
+        if (!KNOWN_APP_DEFAULTS[defKey] && firstToken && KNOWN_APP_DEFAULTS[firstToken]) defKey = firstToken;
+        if (KNOWN_APP_DEFAULTS[defKey]) {
+            var defId = stripDesktop(KNOWN_APP_DEFAULTS[defKey].id || "").toLowerCase();
+            if (defId) {
                 for (var kd = 0; kd < list.length; kd++) {
                     var kde = unwrapEntry(list[kd]);
                     if (!kde) continue;
@@ -610,12 +669,16 @@ function findEntry(desktopEntries, appId) {
             var exec = String(el.exec || "").toLowerCase();
             var execBin = exec.split(/\s+/)[0].split("/").pop();
             var name = String(el.name || "").toLowerCase();
-            if (execBin === target || name === target) return el;
+            if (execBin === target || name === target || (cleanTarget && (execBin === cleanTarget || name === cleanTarget)) || (firstToken.length >= 3 && (execBin === firstToken || name === firstToken))) return el;
         }
     }
 
     var cleanId = id.toLowerCase();
     if (KNOWN_APP_DEFAULTS[cleanId]) return KNOWN_APP_DEFAULTS[cleanId];
+    var cleanedId = cleanWindowAppId(id).toLowerCase();
+    if (cleanedId && KNOWN_APP_DEFAULTS[cleanedId]) return KNOWN_APP_DEFAULTS[cleanedId];
+    var firstTokId = cleanedId ? cleanedId.split(/[\s\-_]+/)[0] : "";
+    if (firstTokId && KNOWN_APP_DEFAULTS[firstTokId]) return KNOWN_APP_DEFAULTS[firstTokId];
     if (chromeDom && KNOWN_APP_DEFAULTS[chromeDom]) return KNOWN_APP_DEFAULTS[chromeDom];
 
     return null;
@@ -876,6 +939,9 @@ function matchToplevel(toplevel, appId, entry, desktopEntries, cachedCliApp) {
     if (!appClass) return false;
 
     var appClassClean = stripDesktop(appClass);
+    var baseAppClass = cleanWindowAppId(appClassClean).toLowerCase();
+    var firstClassToken = baseAppClass ? baseAppClass.split(/[\s\-_]+/)[0] : "";
+    var hypClass = (baseAppClass && baseAppClass.indexOf(" ") !== -1) ? baseAppClass.replace(/\s+/g, "-") : "";
 
     var chromeDom = extractChromeDomain(appClass);
     var isWebAppWindow = (chromeDom.length > 0);
@@ -951,35 +1017,42 @@ function matchToplevel(toplevel, appId, entry, desktopEntries, cachedCliApp) {
     }
 
     // 1. Direct class match (with and without .desktop / .exe)
-    if (cleanId && (appClass === cleanId || appClassClean === cleanId || appClass === (cleanId + ".desktop") || appClass === (cleanId + ".exe"))) return true;
+    if (cleanId && (appClass === cleanId || appClassClean === cleanId || baseAppClass === cleanId || hypClass === cleanId || appClass === (cleanId + ".desktop") || appClass === (cleanId + ".exe"))) return true;
 
     // 2. Normalized match
     var normClass = normalizeKey(appClassClean);
+    var normBaseClass = normalizeKey(baseAppClass);
     var normId = cleanId ? normalizeKey(cleanId) : "";
-    if (normId.length > 0 && normClass === normId) return true;
+    if (normId.length > 0 && (normClass === normId || normBaseClass === normId)) return true;
+    if (normId.length > 0 && firstClassToken.length >= 3 && normalizeKey(firstClassToken) === normId) return true;
 
     // 3. Entry ID, Name, Icon and Exec match
     if (entry) {
         var entryId = stripDesktop(entry.id || "").toLowerCase();
-        if (entryId && (appClass === entryId || appClassClean === entryId || normClass === normalizeKey(entryId))) return true;
+        var normEntryId = normalizeKey(entryId);
+        if (entryId && (appClass === entryId || appClassClean === entryId || baseAppClass === entryId || hypClass === entryId || normClass === normEntryId || normBaseClass === normEntryId)) return true;
+        if (entryId && firstClassToken.length >= 3 && (firstClassToken === entryId || normalizeKey(firstClassToken) === normEntryId)) return true;
 
         var entryName = String(entry.name || "").toLowerCase();
         if (entryName) {
             var normEntryName = normalizeKey(entryName);
-            if (normClass === normEntryName) return true;
+            if (normClass === normEntryName || normBaseClass === normEntryName) return true;
+            if (firstClassToken.length >= 3 && normalizeKey(firstClassToken) === normEntryName) return true;
             var nameTokens = entryName.split(/[\s\-_\.]+/);
             for (var nt = 0; nt < nameTokens.length; nt++) {
-                if (nameTokens[nt] === appClassClean) return true;
+                if (nameTokens[nt] === appClassClean || nameTokens[nt] === baseAppClass || (nameTokens[nt].length >= 3 && nameTokens[nt] === firstClassToken)) return true;
             }
         }
 
         var entryIcon = String(entry.icon || "").toLowerCase();
-        if (entryIcon && (normClass === normalizeKey(entryIcon))) return true;
+        if (entryIcon && (normClass === normalizeKey(entryIcon) || normBaseClass === normalizeKey(entryIcon))) return true;
 
         if (entry.exec) {
             var execStr = String(entry.exec).trim().toLowerCase();
             var execBase = execStr.split(/\s+/)[0].split("/").pop();
-            if (execBase && execBase !== "env" && execBase !== "sh" && execBase !== "bash" && execBase !== "flatpak" && execBase !== "bwrap" && execBase !== "wine" && execBase !== "uwsm-app" && !isWebAppWindow && (appClass === execBase || appClassClean === execBase)) return true;
+            if (execBase && execBase !== "env" && execBase !== "sh" && execBase !== "bash" && execBase !== "flatpak" && execBase !== "bwrap" && execBase !== "wine" && execBase !== "uwsm-app" && !isWebAppWindow) {
+                if (appClass === execBase || appClassClean === execBase || baseAppClass === execBase || (firstClassToken.length >= 3 && firstClassToken === execBase)) return true;
+            }
         }
     }
 
@@ -1144,14 +1217,24 @@ function createDesktopEntryIndex(desktopEntries) {
         var name = String(e.name || "").toLowerCase();
         if (name && !byName[name]) byName[name] = e;
 
+        var cleanName = cleanWindowAppId(name).toLowerCase();
+        if (cleanName && !byName[cleanName]) byName[cleanName] = e;
+
         var idNorm = normalizeKey(id);
         if (idNorm && !byNorm[idNorm]) byNorm[idNorm] = e;
 
         var nameNorm = normalizeKey(name);
         if (nameNorm && !byNorm[nameNorm]) byNorm[nameNorm] = e;
 
+        if (cleanName) {
+            var cleanNorm = normalizeKey(cleanName);
+            if (cleanNorm && !byNorm[cleanNorm]) byNorm[cleanNorm] = e;
+        }
+
         if (e.icon) {
-            var iconNorm = normalizeKey(e.icon);
+            var icon = String(e.icon).toLowerCase();
+            if (!byId[icon]) byId[icon] = e;
+            var iconNorm = normalizeKey(icon);
             if (iconNorm && !byNorm[iconNorm]) byNorm[iconNorm] = e;
         }
 
@@ -1182,13 +1265,7 @@ function findEntryFast(index, appId) {
     var targetNorm = normalizeKey(target);
     if (targetNorm && index.byNorm[targetNorm]) return index.byNorm[targetNorm];
 
-    // 5. O(1) Known default ID match
-    if (KNOWN_APP_DEFAULTS[target]) {
-        var defId = stripDesktop(KNOWN_APP_DEFAULTS[target].id || "").toLowerCase();
-        if (defId && index.byId[defId]) return index.byId[defId];
-    }
-
-    // 5b. Transmission dynamic app ID fast resolution
+    // 5a. Transmission dynamic app ID fast resolution
     if (target.indexOf("com.transmissionbt.transmission") === 0) {
         if (index.byId["transmission-gtk"]) return index.byId["transmission-gtk"];
         if (index.byId["transmission-qt"]) return index.byId["transmission-qt"];
@@ -1198,8 +1275,9 @@ function findEntryFast(index, appId) {
         if (index.byExec["transmission"]) return index.byExec["transmission"];
     }
 
-    // 5c. Steam game ID fast resolution
-    if (target.indexOf("steam_app_") === 0) {
+    // 5b. Steam game ID fast resolution
+    var isSteamGame = (target.indexOf("steam_app_") === 0);
+    if (isSteamGame) {
         var fastGameId = target.replace(/^steam_app_/, "");
         for (var s = 0; s < index.list.length; s++) {
             var se = index.list[s];
@@ -1212,12 +1290,57 @@ function findEntryFast(index, appId) {
         }
     }
 
-    // 5d. Yandex Browser fast resolution
+    // 5c. Yandex Browser fast resolution
     if (target === "yandex-browser" || target === "yandex-browser-stable" || target === "ru.yandex.desktop.browser") {
         if (index.byId["yandex-browser"]) return index.byId["yandex-browser"];
         if (index.byId["ru.yandex.desktop.browser"]) return index.byId["ru.yandex.desktop.browser"];
         if (index.byExec["yandex-browser-stable"]) return index.byExec["yandex-browser-stable"];
         if (index.byExec["yandex-browser"]) return index.byExec["yandex-browser"];
+    }
+
+    // 6. Cleaned window appId match (e.g. "SyncTERM 1.8 - Wayland" -> "syncterm")
+    var cleaned = cleanWindowAppId(id);
+    var cleanTarget = cleaned ? cleaned.toLowerCase() : "";
+    if (cleanTarget && cleanTarget !== target && (!isSteamGame || (cleanTarget !== "steam" && cleanTarget !== "steam_app"))) {
+        if (index.byId[cleanTarget]) return index.byId[cleanTarget];
+        if (index.byName[cleanTarget]) return index.byName[cleanTarget];
+        if (index.byExec[cleanTarget]) return index.byExec[cleanTarget];
+        var cleanNorm = normalizeKey(cleanTarget);
+        if (cleanNorm && index.byNorm[cleanNorm]) return index.byNorm[cleanNorm];
+    }
+
+    // 6b. First token match (e.g. "syncterm" from "syncterm 1.8")
+    var firstToken = cleanTarget ? cleanTarget.split(/[\s\-_]+/)[0] : "";
+    if (!isSteamGame && firstToken && firstToken.length >= 3 && firstToken !== cleanTarget && firstToken !== target && firstToken !== "steam") {
+        if (index.byId[firstToken]) return index.byId[firstToken];
+        if (index.byName[firstToken]) return index.byName[firstToken];
+        if (index.byExec[firstToken]) return index.byExec[firstToken];
+        var firstNorm = normalizeKey(firstToken);
+        if (firstNorm && index.byNorm[firstNorm]) return index.byNorm[firstNorm];
+    }
+
+    // 6c. Hyphenated match (e.g. "claude desktop" -> "claude-desktop")
+    if (cleanTarget && cleanTarget.indexOf(" ") !== -1) {
+        var hypTarget = cleanTarget.replace(/\s+/g, "-");
+        if (index.byId[hypTarget]) return index.byId[hypTarget];
+        if (index.byName[hypTarget]) return index.byName[hypTarget];
+        if (index.byExec[hypTarget]) return index.byExec[hypTarget];
+    }
+
+    // 6d. O(1) Known default ID match
+    if (!isSteamGame) {
+        if (KNOWN_APP_DEFAULTS[target]) {
+            var defId = stripDesktop(KNOWN_APP_DEFAULTS[target].id || "").toLowerCase();
+            if (defId && index.byId[defId]) return index.byId[defId];
+        }
+        if (cleanTarget && KNOWN_APP_DEFAULTS[cleanTarget]) {
+            var defCleanId = stripDesktop(KNOWN_APP_DEFAULTS[cleanTarget].id || "").toLowerCase();
+            if (defCleanId && index.byId[defCleanId]) return index.byId[defCleanId];
+        }
+        if (firstToken && KNOWN_APP_DEFAULTS[firstToken]) {
+            var defFirstId = stripDesktop(KNOWN_APP_DEFAULTS[firstToken].id || "").toLowerCase();
+            if (defFirstId && index.byId[defFirstId]) return index.byId[defFirstId];
+        }
     }
 
     // 6. Fallback to deep heuristic search on cache miss
@@ -1549,7 +1672,7 @@ function buildDockItems(pinnedList, toplevelsList, activeToplevel, desktopEntrie
         }
 
         var rEntry = entryFor(rAppId);
-        if ((rAppId.indexOf("com.transmissionbt.transmission") === 0 || rAppId.indexOf("steam_app_") === 0) && rEntry && rEntry.id) {
+        if (rEntry && rEntry.id) {
             rAppId = stripDesktop(rEntry.id);
         }
         var rRawIcon = (rEntry && rEntry.icon) ? rEntry.icon : (rAppId || "application-x-executable");

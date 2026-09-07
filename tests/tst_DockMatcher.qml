@@ -285,4 +285,78 @@ TestCase {
         compare(DockMatcher.hyprAddressFor({ title: "first" }, null), "")
         compare(DockMatcher.hyprAddressFor(null, null), "")
     }
+
+    function test_cleanWindowAppId() {
+        compare(DockMatcher.cleanWindowAppId("SyncTERM 1.8 - Wayland"), "SyncTERM")
+        compare(DockMatcher.cleanWindowAppId("SyncTERM 1.8"), "SyncTERM")
+        compare(DockMatcher.cleanWindowAppId("SyncTERM (Wayland)"), "SyncTERM")
+        compare(DockMatcher.cleanWindowAppId("SyncTERM - X11"), "SyncTERM")
+        compare(DockMatcher.cleanWindowAppId("Dolphin 5.0"), "Dolphin")
+        compare(DockMatcher.cleanWindowAppId("Claude Desktop"), "Claude Desktop")
+        compare(DockMatcher.cleanWindowAppId(""), "")
+    }
+
+    function test_syncTermMatching() {
+        var synctermEntry = { id: "syncterm.desktop", name: "SyncTERM", exec: "syncterm %u", icon: "syncterm" }
+        var entries = [synctermEntry]
+        var index = DockMatcher.createDesktopEntryIndex(entries)
+
+        // 1. Fast lookup from Wayland app_id with version and backend suffix
+        var entryFromWayland = DockMatcher.findEntryFast(index, "SyncTERM 1.8 - Wayland")
+        verify(entryFromWayland != null)
+        compare(entryFromWayland.id, "syncterm.desktop")
+
+        // 2. Fast lookup from mixed-case appId
+        var entryFromMixedCase = DockMatcher.findEntryFast(index, "SyncTERM")
+        verify(entryFromMixedCase != null)
+        compare(entryFromMixedCase.id, "syncterm.desktop")
+
+        // 3. Toplevel window matching
+        var top = { appId: "SyncTERM 1.8 - Wayland", title: "SyncTERM 1.8" }
+        compare(DockMatcher.matchToplevel(top, "syncterm", synctermEntry, entries), true)
+
+        // 4. buildDockItems with running unpinned SyncTERM window:
+        // Must normalize rAppId to "syncterm" (so pinning and launching work seamlessly)
+        var items = DockMatcher.buildDockItems([], [top], top, entries, null, {}, {}, 0, [])
+        compare(items.length, 1)
+        compare(items[0].appId, "syncterm")
+        compare(items[0].id, "syncterm")
+        compare(items[0].desktopId, "syncterm.desktop")
+        compare(items[0].rawIcon, "syncterm")
+        compare(items[0].isRunning, true)
+        compare(items[0].isActive, true)
+
+        // 5. buildDockItems with pinned legacy "SyncTERM" and running window:
+        // Must resolve to syncterm.desktop and match the running window
+        var pinnedItems = DockMatcher.buildDockItems(["SyncTERM"], [top], top, entries, null, {}, {}, 0, [])
+        compare(pinnedItems.length, 1)
+        compare(pinnedItems[0].desktopId, "syncterm.desktop")
+        compare(pinnedItems[0].isRunning, true)
+        compare(pinnedItems[0].isActive, true)
+    }
+
+    function test_claudeDesktopMatching() {
+        var claudeEntry = { id: "claude-desktop.desktop", name: "Claude", exec: "claude-desktop", icon: "claude-desktop" }
+        var entries = [claudeEntry]
+        var index = DockMatcher.createDesktopEntryIndex(entries)
+
+        var found = DockMatcher.findEntryFast(index, "Claude Desktop")
+        verify(found != null)
+        compare(found.id, "claude-desktop.desktop")
+
+        var top = { appId: "Claude Desktop", title: "Claude" }
+        compare(DockMatcher.matchToplevel(top, "claude-desktop", claudeEntry, entries), true)
+    }
+
+    function test_getCandidates_caseAndVariants() {
+        var cands1 = DockMatcher.getCandidates("SyncTERM", "", "SyncTERM")
+        verify(cands1.indexOf("syncterm") !== -1)
+
+        var cands2 = DockMatcher.getCandidates("", "", "SyncTERM 1.8 - Wayland")
+        verify(cands2.indexOf("syncterm") !== -1)
+
+        var cands3 = DockMatcher.getCandidates("", "", "Claude Desktop")
+        verify(cands3.indexOf("claude-desktop") !== -1)
+        verify(cands3.indexOf("claude") !== -1)
+    }
 }
