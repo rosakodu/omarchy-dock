@@ -1285,6 +1285,8 @@ Item {
         if (widgetId === "omarchy.emojis") return "󰞅"
         if (widgetId === "omarchy.reminders") return "󰔢"
         if (widgetId === "omarchy.speedtest") return "󰓅"
+        if (widgetId === "omarchy.disk-speedtest") return "󰋊"
+        if (widgetId === "omarchy.dropbox") return "󰇣"
         if (widgetId === "omarchy.wifiqr") return "󰒍"
         if (widgetId === "icons") return "󰀻"
         if (widgetId === "omaplug") return "󰏖"
@@ -1351,6 +1353,20 @@ Item {
                 Util.execDetached("omarchy-menu-timezone")
                 return
             }
+        }
+        if (widgetId === "omarchy.microphone") {
+            if (mouse.button === Qt.MiddleButton) {
+                if (root.shell && typeof root.shell.toggle === "function") {
+                    root.shell.toggle("omarchy.audio")
+                } else {
+                    Util.execDetached("omarchy-shell shell toggle omarchy.audio")
+                }
+                return
+            }
+        }
+        if (widgetId === "omarchy.system-update") {
+            Util.execDetached("omarchy-launch-floating-terminal-with-presentation omarchy-update")
+            return
         }
         if (root.shell && typeof root.shell.toggle === "function") {
             root.shell.toggle(widgetId)
@@ -2812,13 +2828,21 @@ Item {
                                             target.toggleBluetooth()
                                         }
                                     } else if (mouse.button === Qt.MiddleButton) {
-                                        if (target.bar && typeof target.bar.run === "function") {
+                                        if (modelData === "omarchy.microphone") {
+                                            root.handleWidgetSlotClick(modelData, mouse)
+                                        } else if (target.bar && typeof target.bar.run === "function") {
                                             target.bar.run("omarchy-menu-timezone")
                                         } else {
                                             Util.execDetached("omarchy-menu-timezone")
                                         }
                                     } else {
-                                        if (typeof target.toggle === "function") {
+                                        if (typeof target.cycleLayout === "function") {
+                                            target.cycleLayout()
+                                        } else if (typeof target.runUpdate === "function") {
+                                            target.runUpdate()
+                                        } else if (typeof target.toggleMute === "function") {
+                                            target.toggleMute()
+                                        } else if (typeof target.toggle === "function") {
                                             target.toggle()
                                         } else if (typeof target.togglePanel === "function") {
                                             target.togglePanel()
@@ -3152,13 +3176,21 @@ Item {
                                             target.toggleBluetooth()
                                         }
                                     } else if (mouse.button === Qt.MiddleButton) {
-                                        if (target.bar && typeof target.bar.run === "function") {
+                                        if (modelData === "omarchy.microphone") {
+                                            root.handleWidgetSlotClick(modelData, mouse)
+                                        } else if (target.bar && typeof target.bar.run === "function") {
                                             target.bar.run("omarchy-menu-timezone")
                                         } else {
                                             Util.execDetached("omarchy-menu-timezone")
                                         }
                                     } else {
-                                        if (typeof target.toggle === "function") {
+                                        if (typeof target.cycleLayout === "function") {
+                                            target.cycleLayout()
+                                        } else if (typeof target.runUpdate === "function") {
+                                            target.runUpdate()
+                                        } else if (typeof target.toggleMute === "function") {
+                                            target.toggleMute()
+                                        } else if (typeof target.toggle === "function") {
                                             target.toggle()
                                         } else if (typeof target.togglePanel === "function") {
                                             target.togglePanel()

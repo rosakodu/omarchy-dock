@@ -11,11 +11,23 @@ function switchDockWidgetInBar(shell, newWidgetId, prevWidgetIds, savedPositions
         "omarchy.system-update": "center",
         "omarchy.indicators": "center",
         "omarchy.audio": "right",
+        "omarchy.microphone": "right",
+        "omarchy.media": "right",
         "omarchy.bluetooth": "right",
         "omarchy.network": "right",
         "omarchy.power": "right",
         "omarchy.monitor": "right",
-        "omarchy.tailscale": "right"
+        "omarchy.agents": "right",
+        "omarchy.tailscale": "right",
+        "omarchy.keyboard-layout": "right",
+        "omarchy.clipboard": "right",
+        "omarchy.emojis": "right",
+        "omarchy.reminders": "right",
+        "omarchy.tray": "right",
+        "omarchy.dropbox": "right",
+        "omarchy.speedtest": "right",
+        "omarchy.disk-speedtest": "right",
+        "omarchy.wifiqr": "right"
     };
 
     var canonicalSectionOrders = {
@@ -34,6 +46,8 @@ function switchDockWidgetInBar(shell, newWidgetId, prevWidgetIds, savedPositions
             "omarchy.agents",
             "omarchy.tray",
             "glafeara.languages",
+            "omarchy.keyboard-layout",
+            "omarchy.microphone",
             "silvaio.gamemode",
             "lgse.sandman",
             "omarchy.network",
@@ -41,7 +55,9 @@ function switchDockWidgetInBar(shell, newWidgetId, prevWidgetIds, savedPositions
             "omarchy.monitor",
             "omarchy.power",
             "omarchy.audio",
-            "omarchy.tailscale"
+            "omarchy.media",
+            "omarchy.tailscale",
+            "omarchy.dropbox"
         ]
     };
 
@@ -279,11 +295,23 @@ function returnWidgetToBar(shell, widgetId, savedPositions, defaultRegion, shell
         "omarchy.system-update": "center",
         "omarchy.indicators": "center",
         "omarchy.audio": "right",
+        "omarchy.microphone": "right",
+        "omarchy.media": "right",
         "omarchy.bluetooth": "right",
         "omarchy.network": "right",
         "omarchy.power": "right",
         "omarchy.monitor": "right",
-        "omarchy.tailscale": "right"
+        "omarchy.agents": "right",
+        "omarchy.tailscale": "right",
+        "omarchy.keyboard-layout": "right",
+        "omarchy.clipboard": "right",
+        "omarchy.emojis": "right",
+        "omarchy.reminders": "right",
+        "omarchy.tray": "right",
+        "omarchy.dropbox": "right",
+        "omarchy.speedtest": "right",
+        "omarchy.disk-speedtest": "right",
+        "omarchy.wifiqr": "right"
     };
 
     var canonicalSectionOrders = {
@@ -302,6 +330,8 @@ function returnWidgetToBar(shell, widgetId, savedPositions, defaultRegion, shell
             "omarchy.agents",
             "omarchy.tray",
             "glafeara.languages",
+            "omarchy.keyboard-layout",
+            "omarchy.microphone",
             "silvaio.gamemode",
             "lgse.sandman",
             "omarchy.network",
@@ -309,7 +339,9 @@ function returnWidgetToBar(shell, widgetId, savedPositions, defaultRegion, shell
             "omarchy.monitor",
             "omarchy.power",
             "omarchy.audio",
-            "omarchy.tailscale"
+            "omarchy.media",
+            "omarchy.tailscale",
+            "omarchy.dropbox"
         ]
     };
 

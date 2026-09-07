@@ -450,12 +450,26 @@ PanelWindow {
                     readonly property var standardWidgets: [
                         { id: "omarchy.clock", name: "Clock & Calendar", icon: "󰥔", defaultRegion: "center" },
                         { id: "omarchy.weather", name: "Weather", icon: "󰖐", defaultRegion: "center" },
+                        { id: "omarchy.system-update", name: "Omarchy update", icon: "󰚰", defaultRegion: "center" },
+                        { id: "omarchy.indicators", name: "Indicators", icon: "󰂚", defaultRegion: "center" },
                         { id: "omarchy.audio", name: "Volume & Audio", icon: "󰕾", defaultRegion: "right" },
+                        { id: "omarchy.microphone", name: "Microphone", icon: "󰍬", defaultRegion: "right" },
+                        { id: "omarchy.media", name: "Media Player", icon: "󰐊", defaultRegion: "right" },
                         { id: "omarchy.network", name: "Network & Wi-Fi", icon: "󰖩", defaultRegion: "right" },
                         { id: "omarchy.bluetooth", name: "Bluetooth", icon: "󰂯", defaultRegion: "right" },
                         { id: "omarchy.power", name: "Battery & Power", icon: "󰁹", defaultRegion: "right" },
                         { id: "omarchy.monitor", name: "Display", icon: "󰍹", defaultRegion: "right" },
-                        { id: "omarchy.tailscale", name: "Tailscale VPN", icon: "󰖂", defaultRegion: "right" }
+                        { id: "omarchy.agents", name: "AI Agents", icon: "󰚩", defaultRegion: "right" },
+                        { id: "omarchy.tailscale", name: "Tailscale VPN", icon: "󰖂", defaultRegion: "right" },
+                        { id: "omarchy.keyboard-layout", name: "Keyboard layout", icon: "󰌌", defaultRegion: "right" },
+                        { id: "omarchy.clipboard", name: "Clipboard", icon: "󰅌", defaultRegion: "right" },
+                        { id: "omarchy.emojis", name: "Emojis", icon: "󰞅", defaultRegion: "right" },
+                        { id: "omarchy.reminders", name: "Reminders", icon: "󰔢", defaultRegion: "right" },
+                        { id: "omarchy.tray", name: "System tray", icon: "󰇙", defaultRegion: "right" },
+                        { id: "omarchy.dropbox", name: "Dropbox", icon: "󰇣", defaultRegion: "right" },
+                        { id: "omarchy.speedtest", name: "Speed Test", icon: "󰓅", defaultRegion: "right" },
+                        { id: "omarchy.disk-speedtest", name: "Disk speed test", icon: "󰋊", defaultRegion: "right" },
+                        { id: "omarchy.wifiqr", name: "Wi-Fi QR", icon: "󰒍", defaultRegion: "right" }
                     ]
 
                     model: {
