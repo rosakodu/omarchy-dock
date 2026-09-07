@@ -1,8 +1,52 @@
 .pragma library
 
+// Omarchy decides whether a plugin is enabled by finding its id in the shell
+// config -- PluginRegistry.isEnabled() -> findEntryLocation(), which looks at
+// `bar.id`, `bar.layout.*` and the top-level `plugins` array. A first-party
+// widget short-circuits on `__isFirstParty` and is enabled wherever it sits,
+// which is why hosting one in the dock works. A third-party plugin has to be
+// found: taken out of `bar.layout` and listed nowhere else it counts as
+// disabled, gets no Loader, and shell.summon() refuses it -- so the dock slot
+// we just created cannot open it, and neither can anything else.
+//
+// Registering it under `plugins` keeps it enabled with no bar icon, which is
+// where overlay-only plugins already live. We only deregister a widget we
+// registered ourselves, so a plugin the user already had under `plugins`
+// stays there when it leaves the dock.
+function findPluginEntryIndex(config, widgetId) {
+    if (!config || !Array.isArray(config.plugins) || !widgetId) return -1;
+    for (var i = 0; i < config.plugins.length; i++) {
+        var entry = config.plugins[i];
+        var id = (typeof entry === "string") ? entry : (entry && entry.id);
+        if (id === widgetId) return i;
+    }
+    return -1;
+}
+
+// A first-party widget needs no `plugins` entry and adding one would only be
+// noise in the user's config. When the registry is not reachable we register
+// anyway: a redundant entry never disables anything, a missing one does.
+function isFirstPartyWidget(shell, widgetId) {
+    if (!shell || !shell.pluginRegistry || !widgetId) return false;
+    var installed = shell.pluginRegistry.installedPlugins;
+    var manifest = installed ? installed[widgetId] : null;
+    return !!(manifest && manifest.__isFirstParty);
+}
+
 function switchDockWidgetInBar(shell, newWidgetId, prevWidgetIds, savedPositions, shellConfigFile) {
     if (!savedPositions) savedPositions = {};
     if (!Array.isArray(prevWidgetIds)) prevWidgetIds = [];
+
+    // Decided before any mutation: `mutator` runs once per config representation
+    // and clears savedPositions as it goes, so reading the flag inside it would
+    // be true on the first pass and false on the second.
+    var deregister = {};
+    for (var d = 0; d < prevWidgetIds.length; d++) {
+        var did = prevWidgetIds[d];
+        if (did && savedPositions[did] && savedPositions[did].registeredInPlugins) {
+            deregister[did] = true;
+        }
+    }
 
     var defaultRegions = {
         "omarchy.menu": "left",
@@ -122,6 +166,13 @@ function switchDockWidgetInBar(shell, newWidgetId, prevWidgetIds, savedPositions
             }
 
             targetList.splice(insertAt, 0, targetEntry);
+
+            // Back on the bar it is found again, so our `plugins` entry is redundant.
+            if (deregister[prevId]) {
+                var stalePluginIdx = findPluginEntryIndex(config, prevId);
+                if (stalePluginIdx !== -1) config.plugins.splice(stalePluginIdx, 1);
+            }
+
             delete savedPositions[prevId];
         }
 
@@ -148,6 +199,14 @@ function switchDockWidgetInBar(shell, newWidgetId, prevWidgetIds, savedPositions
                         list2.splice(i2, 1);
                     }
                 }
+            }
+
+            // Keep it enabled now that it is no longer in the bar layout.
+            if (!isFirstPartyWidget(shell, newWidgetId) && findPluginEntryIndex(config, newWidgetId) === -1) {
+                if (!Array.isArray(config.plugins)) config.plugins = [];
+                config.plugins.push({ id: newWidgetId });
+                if (!savedPositions[newWidgetId]) savedPositions[newWidgetId] = {};
+                savedPositions[newWidgetId].registeredInPlugins = true;
             }
         }
     };
