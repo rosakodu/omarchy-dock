@@ -86,5 +86,43 @@ class PickTargetTest(unittest.TestCase):
         self.assertIsNone(dm.pick_target([], [], [], "", -1, ""))
 
 
+class FindDesktopFileTest(unittest.TestCase):
+    def test_desktop_file_with_spaces_is_found(self):
+        # Issue #23: Desktop files like "Google Maps.desktop" or "Disk Usage.desktop"
+        # have spaces in their filename and must not be rejected by find_desktop_file.
+        # Test finding an existing entry on disk or via custom search directory.
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_app = os.path.join(tmpdir, "My Custom App.desktop")
+            with open(test_app, "w") as f:
+                f.write("[Desktop Entry]\nName=My Custom App\nType=Application\nExec=true\n")
+
+            old_xdg = os.environ.get("XDG_DATA_DIRS", "")
+            try:
+                # Set XDG_DATA_DIRS so tmpdir is searched as <tmpdir>/applications
+                app_dir = os.path.join(tmpdir, "applications")
+                os.makedirs(app_dir, exist_ok=True)
+                os.rename(test_app, os.path.join(app_dir, "My Custom App.desktop"))
+                os.environ["XDG_DATA_DIRS"] = tmpdir
+
+                found = dm.find_desktop_file("My Custom App")
+                self.assertEqual(found, "My Custom App.desktop")
+
+                found_ext = dm.find_desktop_file("My Custom App.desktop")
+                self.assertEqual(found_ext, "My Custom App.desktop")
+            finally:
+                if old_xdg:
+                    os.environ["XDG_DATA_DIRS"] = old_xdg
+                else:
+                    os.environ.pop("XDG_DATA_DIRS", None)
+
+    def test_path_traversal_and_null_bytes_rejected(self):
+        self.assertEqual(dm.find_desktop_file("/etc/passwd"), "")
+        self.assertEqual(dm.find_desktop_file("../app.desktop"), "")
+        self.assertEqual(dm.find_desktop_file("app\x00name"), "")
+        self.assertEqual(dm.find_desktop_file(""), "")
+        self.assertEqual(dm.find_desktop_file(None), "")
+
+
 if __name__ == "__main__":
     unittest.main()

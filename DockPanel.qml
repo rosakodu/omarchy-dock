@@ -1069,13 +1069,14 @@ Item {
         if (manifest && root.shell && root.shell.pluginRegistry) {
             var ep = root.shell.pluginRegistry.entryPointUrl(manifest, "barWidget")
             if (ep && ep.length > 0) return ep
-            var epPanel = root.shell.pluginRegistry.entryPointUrl(manifest, "panel")
-            if (epPanel && epPanel.length > 0) return epPanel
         }
         var parts = widgetId.split(".")
         var name = parts.length > 1 ? parts[1] : parts[0]
         if (name === "audio" || name === "bluetooth" || name === "network" || name === "power" || name === "monitor" || name === "tailscale") {
             return "file:///usr/share/omarchy/shell/plugins/panels/" + name + "/Panel.qml"
+        }
+        if (manifest && (!manifest.entryPoints || !manifest.entryPoints.barWidget)) {
+            return ""
         }
         return "file:///usr/share/omarchy/shell/plugins/panels/" + name + "/BarWidget.qml"
     }
@@ -1262,6 +1263,13 @@ Item {
         if (widgetId === "omarchy.indicators") return "󰂚"
         if (widgetId === "silvaio.gamemode") return "󰊴"
         if (widgetId === "lgse.sandman") return "󰒲"
+        if (widgetId === "omarchy.clipboard") return "󰅌"
+        if (widgetId === "omarchy.emojis") return "󰞅"
+        if (widgetId === "omarchy.reminders") return "󰔢"
+        if (widgetId === "omarchy.speedtest") return "󰓅"
+        if (widgetId === "omarchy.wifiqr") return "󰒍"
+        if (widgetId === "icons") return "󰀻"
+        if (widgetId === "omaplug") return "󰏖"
         if (widgetId === "omarchy.audio") {
             if (item && typeof item.outputIcon === "function") {
                 try {
@@ -1291,7 +1299,17 @@ Item {
             if (frac < 0.90) return "󰁿"
             return "󰁹"
         }
-        if (item && item.icon) return item.icon
+        if (item) {
+            if (item.icon) return item.icon
+            if (item.text) return item.text
+            if (item.glyph) return item.glyph
+            if (item.displayText) return item.displayText
+        }
+        var manifest = (root.shell && root.shell.pluginRegistry && root.shell.pluginRegistry.installedPlugins) ? root.shell.pluginRegistry.installedPlugins[widgetId] : null
+        if (manifest) {
+            if (manifest.icon) return manifest.icon
+            if (manifest.barWidget && manifest.barWidget.icon) return manifest.barWidget.icon
+        }
         return "󰒓"
     }
 
@@ -1316,7 +1334,9 @@ Item {
                 return
             }
         }
-        if (root.shell && typeof root.shell.togglePlugin === "function") {
+        if (root.shell && typeof root.shell.toggle === "function") {
+            root.shell.toggle(widgetId)
+        } else if (root.shell && typeof root.shell.togglePlugin === "function") {
             root.shell.togglePlugin(widgetId)
         } else {
             Util.execDetached("omarchy-shell shell toggle " + widgetId)
@@ -2714,7 +2734,7 @@ Item {
                                     var _ic = it ? (it.icon || it.displayText || it.playIcon || "") : ""
                                     return root.getWidgetIcon(modelData, it)
                                 }
-                                fontFamily: Style.font.family
+                                fontFamily: (leftWidgetLoader.item && leftWidgetLoader.item.fontFamily) ? leftWidgetLoader.item.fontFamily : ((leftWidgetLoader.item && leftWidgetLoader.item.font && leftWidgetLoader.item.font.family) ? leftWidgetLoader.item.font.family : Style.font.family)
                                 fontSize: 22
                                 color: leftWidgetSlotMouse.containsMouse ? Color.accent : Color.composed("popups.text", "popups.text-alpha", Color.text, 0.95)
                                 Behavior on color { ColorAnimation { duration: 120 } }
@@ -3054,7 +3074,7 @@ Item {
                                     var _ic = it ? (it.icon || it.displayText || it.playIcon || "") : ""
                                     return root.getWidgetIcon(modelData, it)
                                 }
-                                fontFamily: Style.font.family
+                                fontFamily: (rightWidgetLoader.item && rightWidgetLoader.item.fontFamily) ? rightWidgetLoader.item.fontFamily : ((rightWidgetLoader.item && rightWidgetLoader.item.font && rightWidgetLoader.item.font.family) ? rightWidgetLoader.item.font.family : Style.font.family)
                                 fontSize: 22
                                 color: rightWidgetSlotMouse.containsMouse ? Color.accent : Color.composed("popups.text", "popups.text-alpha", Color.text, 0.95)
                                 Behavior on color { ColorAnimation { duration: 120 } }

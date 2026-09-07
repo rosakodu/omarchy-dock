@@ -122,6 +122,15 @@ function switchDockWidgetInBar(shell, newWidgetId, prevWidgetIds, savedPositions
             }
 
             targetList.splice(insertAt, 0, targetEntry);
+            if (savedInfo && savedInfo.addedToPlugins && Array.isArray(config.plugins)) {
+                for (var ppi = config.plugins.length - 1; ppi >= 0; ppi--) {
+                    var ppItem = config.plugins[ppi];
+                    var ppId = (typeof ppItem === "string") ? ppItem : (ppItem && ppItem.id);
+                    if (ppId === prevId) {
+                        config.plugins.splice(ppi, 1);
+                    }
+                }
+            }
             delete savedPositions[prevId];
         }
 
@@ -148,6 +157,20 @@ function switchDockWidgetInBar(shell, newWidgetId, prevWidgetIds, savedPositions
                         list2.splice(i2, 1);
                     }
                 }
+            }
+
+            // Keep plugin enabled in Omarchy shell while hosted in dock
+            if (!Array.isArray(config.plugins)) config.plugins = [];
+            var foundInPlugins = false;
+            for (var pi = 0; pi < config.plugins.length; pi++) {
+                var pItem = config.plugins[pi];
+                var pId = (typeof pItem === "string") ? pItem : (pItem && pItem.id);
+                if (pId === newWidgetId) { foundInPlugins = true; break; }
+            }
+            if (!foundInPlugins) {
+                config.plugins.push({ id: newWidgetId });
+                if (!savedPositions[newWidgetId]) savedPositions[newWidgetId] = {};
+                savedPositions[newWidgetId].addedToPlugins = true;
             }
         }
     };
@@ -210,6 +233,21 @@ function removeWidgetFromBar(shell, widgetId, savedPositions, shellConfigFile) {
                         list.splice(i, 1);
                     }
                 }
+            }
+        }
+
+        if (widgetId && widgetId !== "omarchy.apps") {
+            if (!Array.isArray(config.plugins)) config.plugins = [];
+            var foundInPlugins = false;
+            for (var pi = 0; pi < config.plugins.length; pi++) {
+                var pItem = config.plugins[pi];
+                var pId = (typeof pItem === "string") ? pItem : (pItem && pItem.id);
+                if (pId === widgetId) { foundInPlugins = true; break; }
+            }
+            if (!foundInPlugins) {
+                config.plugins.push({ id: widgetId });
+                if (!savedPositions[widgetId]) savedPositions[widgetId] = {};
+                savedPositions[widgetId].addedToPlugins = true;
             }
         }
     };
@@ -381,6 +419,15 @@ function returnWidgetToBar(shell, widgetId, savedPositions, defaultRegion, shell
         }
 
         targetList.splice(insertAt, 0, targetEntry);
+        if (savedInfo && savedInfo.addedToPlugins && Array.isArray(config.plugins)) {
+            for (var pi = config.plugins.length - 1; pi >= 0; pi--) {
+                var pItem = config.plugins[pi];
+                var pId = (typeof pItem === "string") ? pItem : (pItem && pItem.id);
+                if (pId === widgetId) {
+                    config.plugins.splice(pi, 1);
+                }
+            }
+        }
     };
 
     if (shell && typeof shell.mutateShellConfig === "function") {

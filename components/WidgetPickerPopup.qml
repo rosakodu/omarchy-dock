@@ -458,18 +458,101 @@ PanelWindow {
                         { id: "omarchy.tailscale", name: "Tailscale VPN", icon: "󰖂", defaultRegion: "right" }
                     ]
 
+                    function getPluginIcon(pluginId, manifest) {
+                        if (manifest && manifest.icon) return manifest.icon
+                        if (manifest && manifest.barWidget && manifest.barWidget.icon) return manifest.barWidget.icon
+                        var known = {
+                            "omarchy.clock": "󰥔",
+                            "omarchy.weather": "󰖐",
+                            "omarchy.audio": "󰕾",
+                            "omarchy.network": "󰖩",
+                            "omarchy.bluetooth": "󰂯",
+                            "omarchy.power": "󰁹",
+                            "omarchy.monitor": "󰍹",
+                            "omarchy.tailscale": "󰖂",
+                            "omarchy.system-update": "󰚰",
+                            "omarchy.indicators": "󰂚",
+                            "omarchy.tray": "󰇙",
+                            "omarchy.agents": "󰚩",
+                            "omarchy.media": "󰐊",
+                            "omarchy.microphone": "󰍬",
+                            "omarchy.clipboard": "󰅌",
+                            "omarchy.emojis": "󰞅",
+                            "omarchy.reminders": "󰔢",
+                            "omarchy.speedtest": "󰓅",
+                            "omarchy.wifiqr": "󰒍",
+                            "omarchy.keyboard-layout": "󰌌",
+                            "nomarkoo.keyboard-layout": "󰌌",
+                            "glafeara.languages": "󰌌",
+                            "silvaio.gamemode": "󰊴",
+                            "lgse.sandman": "󰒲",
+                            "icons": "󰀻",
+                            "omaplug": "󰏖"
+                        }
+                        return known[pluginId] || "󰒓"
+                    }
+
                     model: {
                         var list = []
+                        var seen = {}
+                        var installed = (pickerWindow.shell && pickerWindow.shell.pluginRegistry && pickerWindow.shell.pluginRegistry.installedPlugins) ? pickerWindow.shell.pluginRegistry.installedPlugins : null
+
+                        // 1. Standard widgets
                         for (var i = 0; i < standardWidgets.length; i++) {
                             var w = standardWidgets[i]
-                            // Only show installed widgets
                             var isInstalled = true
-                            if (pickerWindow.shell && pickerWindow.shell.pluginRegistry && pickerWindow.shell.pluginRegistry.installedPlugins) {
-                                isInstalled = (pickerWindow.shell.pluginRegistry.installedPlugins[w.id] !== undefined)
+                            if (installed) {
+                                isInstalled = (installed[w.id] !== undefined)
                             }
                             if (!isInstalled) continue
                             list.push(w)
+                            seen[w.id] = true
                         }
+
+                        // 2. Discover third-party and other installed widgets/launchers
+                        if (installed) {
+                            var blacklist = [
+                                "rosakodu.dock",
+                                "omarchy.apps",
+                                "omarchy.bar",
+                                "omarchy.background",
+                                "omarchy.lock",
+                                "omarchy.polkit",
+                                "omarchy.idle",
+                                "omarchy.notifications",
+                                "omarchy.battery",
+                                "omarchy.osd"
+                            ]
+                            var keys = Object.keys(installed).sort()
+                            for (var k = 0; k < keys.length; k++) {
+                                var pid = keys[k]
+                                if (seen[pid] || blacklist.indexOf(pid) !== -1) continue
+
+                                var m = installed[pid]
+                                if (!m) continue
+
+                                var hasBarWidget = m.entryPoints && m.entryPoints.barWidget
+                                var hasOverlay = m.entryPoints && m.entryPoints.overlay
+                                var hasPanel = m.entryPoints && m.entryPoints.panel
+                                var isBarKind = Array.isArray(m.kinds) && (m.kinds.indexOf("bar-widget") !== -1 || m.kinds.indexOf("overlay") !== -1 || m.kinds.indexOf("panel") !== -1)
+
+                                if (!hasBarWidget && !hasOverlay && !hasPanel && !isBarKind) continue
+                                if (Array.isArray(m.kinds) && m.kinds.length === 1 && m.kinds[0] === "service") continue
+
+                                var displayName = (m.barWidget && m.barWidget.displayName) || m.name || pid
+                                var iconGlyph = widgetsList.getPluginIcon(pid, m)
+                                var defReg = (m.barWidget && m.barWidget.defaultSection) || "right"
+
+                                list.push({
+                                    id: pid,
+                                    name: displayName,
+                                    icon: iconGlyph,
+                                    defaultRegion: defReg
+                                })
+                                seen[pid] = true
+                            }
+                        }
+
                         return list
                     }
 
@@ -480,6 +563,7 @@ PanelWindow {
                         radius: 7
 
                         readonly property bool isInDock: (pickerWindow.root && pickerWindow.root.dockWidgets && pickerWindow.root.dockWidgets.indexOf(modelData.id) !== -1)
+                        readonly property bool isInBar: pickerWindow.shell && pickerWindow.shell.pluginRegistry && typeof pickerWindow.shell.pluginRegistry.inBar === "function" && pickerWindow.shell.pluginRegistry.inBar(modelData.id)
                         readonly property bool isHovered: itemMouse.containsMouse
 
                         color: isInDock ? Color.composed("menu.selectedBackground", "menu.selectedBackground-alpha", Color.accent, isHovered ? 0.18 : 0.10) : (isHovered ? Color.composed("menu.text", "menu.text-alpha", Color.text, 0.06) : "transparent")
@@ -539,7 +623,7 @@ PanelWindow {
                                     Text {
                                         id: badgeText
                                         anchors.centerIn: parent
-                                        text: rowItem.isInDock ? "Dock" : "Tray"
+                                        text: rowItem.isInDock ? "Dock" : (rowItem.isInBar ? "Bar" : "Available")
                                         textFormat: Text.PlainText
                                         font.family: Style.font.family
                                         font.pixelSize: 9

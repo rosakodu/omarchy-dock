@@ -4,6 +4,7 @@ import json
 import os
 import re
 import shlex
+import shutil
 import socket
 import subprocess
 import sys
@@ -208,7 +209,7 @@ def parse_desktop_exec_argv(exec_str):
 def find_desktop_file(desktop_id):
     if not desktop_id or not isinstance(desktop_id, str):
         return ""
-    if "/" in desktop_id or " " in desktop_id:
+    if "/" in desktop_id or "\x00" in desktop_id:
         return ""
     clean = desktop_id if desktop_id.endswith(".desktop") else (desktop_id + ".desktop")
     search_dirs = [
@@ -326,7 +327,7 @@ def launch_fallback(queries):
         if not q or q.startswith("0x") or q.startswith("--"):
             continue
         argv = parse_desktop_exec_argv(q)
-        if argv:
+        if argv and shutil.which(argv[0]):
             try:
                 subprocess.Popen(["uwsm-app", "--"] + argv, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 return
