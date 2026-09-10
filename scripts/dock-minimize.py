@@ -8,6 +8,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import urllib.parse
 
 def normalize(s):
     if not s:
@@ -267,7 +268,53 @@ def split_queries(queries):
     return identifiers, target_index, target_addr
 
 
-def pick_target(matching, visible_windows, minimized_windows, target_addr, target_index, active_addr):
+def match_chrome_pwa(c_class, query):
+    """Match a Hyprland window class against a Chrome/Chromium/Brave/Edge PWA launch query.
+
+    Handles Chrome web app classes like 'chrome-outlook.office.com__mail_-Profile_1'
+    generated from '--app=https://outlook.office.com/mail/' and '--profile-directory="Profile 1"'.
+    """
+    if not c_class or not query:
+        return False
+
+    c_class = str(c_class).lower()
+    if not any(c_class.startswith(p) for p in ("chrome-", "chromium-", "brave-", "edge-", "msedge-", "microsoft-edge-")):
+        return False
+
+    # 1. URL-based PWA (--app=...)
+    app_m = re.search(r'--app=(?:"([^"]+)"|\'([^\']+)\'|([^\s]+))', query)
+    if app_m:
+        raw_url = app_m.group(1) or app_m.group(2) or app_m.group(3) or ""
+        parsed = urllib.parse.urlparse(raw_url)
+        host = parsed.netloc.lower()
+        path = parsed.path or "/"
+        path_replaced = path.replace("/", "_")
+        pwa_key = (host + "_" + path_replaced).lower()
+        alt_key = (host + "_" + path.rstrip("/").replace("/", "_")).lower()
+
+        prof_m = re.search(r'--profile-directory=(?:"([^"]+)"|\'([^\']+)\'|([^\s]+))', query)
+        profile = (prof_m.group(1) or prof_m.group(2) or prof_m.group(3) or "").replace(" ", "_").lower() if prof_m else None
+
+        if pwa_key in c_class or alt_key in c_class:
+            if profile:
+                return ("-" + profile) in c_class
+            return True
+
+    # 2. App-ID based PWA (--app-id=...)
+    app_id_m = re.search(r'--app-id=(?:"([^"]+)"|\'([^\']+)\'|([^\s]+))', query)
+    if app_id_m:
+        app_id = (app_id_m.group(1) or app_id_m.group(2) or app_id_m.group(3) or "").lower()
+        if app_id and app_id in c_class:
+            prof_m = re.search(r'--profile-directory=(?:"([^"]+)"|\'([^\']+)\'|([^\s]+))', query)
+            profile = (prof_m.group(1) or prof_m.group(2) or prof_m.group(3) or "").replace(" ", "_").lower() if prof_m else None
+            if profile:
+                return ("-" + profile) in c_class
+            return True
+
+    return False
+
+
+def pick_target(matching, visible_windows, minimized_windows, target_addr, target_index, active_addr, all_clients=None):
     """The one window a dock click is aimed at, out of the app's windows.
 
     An address names a specific window and wins outright; an index is the
@@ -280,6 +327,10 @@ def pick_target(matching, visible_windows, minimized_windows, target_addr, targe
         for c in matching:
             if str(c.get("address", "")).lower() == target_addr:
                 return c
+        if all_clients:
+            for c in all_clients:
+                if str(c.get("address", "")).lower() == target_addr:
+                    return c
     if 0 <= target_index < len(matching):
         return matching[target_index]
     if active_addr:
@@ -457,9 +508,17 @@ def main():
             if nq and len(nq) >= 3 and (nq == c_norm_class or nq == c_norm_init):
                 is_match = True
                 break
+            if match_chrome_pwa(c_class, queries[i]):
+                is_match = True
+                break
 
         if is_match:
             matching.append(c)
+
+    if target_addr:
+        target_client = next((c for c in clients if str(c.get("address", "")).lower() == target_addr), None)
+        if target_client and target_client not in matching:
+            matching.insert(0, target_client)
 
     focused_ws = "1"
     try:
@@ -497,7 +556,7 @@ def main():
             pass
 
         target_c = pick_target(matching, visible_windows, minimized_windows,
-                               target_addr, target_index, active_addr)
+                               target_addr, target_index, active_addr, clients)
         if target_c is None:
             return
 
@@ -559,7 +618,7 @@ def main():
             return
 
         target_c = pick_target(matching, visible_windows, minimized_windows,
-                               target_addr, target_index, "")
+                               target_addr, target_index, "", clients)
         if target_c is None:
             return
 

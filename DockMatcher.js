@@ -1607,6 +1607,7 @@ function buildDockItems(pinnedList, toplevelsList, activeToplevel, desktopEntrie
             var exec = (entry && entry.exec) ? entry.exec : "";
 
             var pRes = collectMatchingToplevels(appId, entry, entries, toplevels, assignedTops, toplevelCliApps, activeToplevel, isTopMinimized, getTopKey);
+            var pAppClass = (pRes.matching && pRes.matching.length > 0 && pRes.matching[0].appId) ? pRes.matching[0].appId : "";
             var itemInfo = getBadgeInfo(badgeCounts, urgentCounts, appId, entry, name, desktopId);
 
             items.push({
@@ -1614,6 +1615,7 @@ function buildDockItems(pinnedList, toplevelsList, activeToplevel, desktopEntrie
                 appId: appId,
                 desktopId: desktopId,
                 exec: exec,
+                appClass: pAppClass,
                 name: name,
                 icon: icon,
                 rawIcon: rawIcon,
@@ -1671,6 +1673,7 @@ function buildDockItems(pinnedList, toplevelsList, activeToplevel, desktopEntrie
             }
         }
 
+        var origAppClass = rAppId;
         var rEntry = entryFor(rAppId);
         if (rEntry && rEntry.id) {
             rAppId = stripDesktop(rEntry.id);
@@ -1686,6 +1689,7 @@ function buildDockItems(pinnedList, toplevelsList, activeToplevel, desktopEntrie
         var rRes = collectMatchingToplevels(rAppId, rEntry, entries, toplevels, assignedTops, toplevelCliApps, activeToplevel, isTopMinimized, getTopKey);
         if (rRes.windowCount === 0) continue;
 
+        var rAppClass = (rRes.matching && rRes.matching.length > 0 && rRes.matching[0].appId) ? rRes.matching[0].appId : origAppClass;
         var rInfo = getBadgeInfo(badgeCounts, urgentCounts, rAppId, rEntry, rName, rDesktopId);
 
         items.push({
@@ -1693,6 +1697,7 @@ function buildDockItems(pinnedList, toplevelsList, activeToplevel, desktopEntrie
             appId: rAppId,
             desktopId: rDesktopId,
             exec: rExec,
+            appClass: rAppClass,
             name: rName,
             icon: rIcon,
             rawIcon: rRawIcon,

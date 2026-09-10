@@ -1701,6 +1701,13 @@ Item {
         if (itemData.appId) args.push(itemData.appId)
         if (itemData.desktopId && itemData.desktopId !== itemData.appId) args.push(itemData.desktopId)
         if (itemData.exec) args.push(itemData.exec)
+        if (itemData.appClass && itemData.appClass !== itemData.appId && itemData.appClass !== itemData.desktopId) args.push(itemData.appClass)
+        if (itemData.toplevels && typeof targetIndex === "number" && targetIndex >= 0 && targetIndex < itemData.toplevels.length) {
+            var topAppMin = itemData.toplevels[targetIndex].appId || ""
+            if (topAppMin && topAppMin !== itemData.appId && topAppMin !== itemData.desktopId && topAppMin !== itemData.appClass) {
+                args.push(topAppMin)
+            }
+        }
         var targetArg = root.targetWindowArg(itemData, targetIndex)
         if (targetArg) {
             args.push(targetArg)
@@ -1728,6 +1735,13 @@ Item {
         if (itemData.appId) args.push(itemData.appId)
         if (itemData.desktopId && itemData.desktopId !== itemData.appId) args.push(itemData.desktopId)
         if (itemData.exec) args.push(itemData.exec)
+        if (itemData.appClass && itemData.appClass !== itemData.appId && itemData.appClass !== itemData.desktopId) args.push(itemData.appClass)
+        if (itemData.toplevels && typeof targetIndex === "number" && targetIndex >= 0 && targetIndex < itemData.toplevels.length) {
+            var topAppAct = itemData.toplevels[targetIndex].appId || ""
+            if (topAppAct && topAppAct !== itemData.appId && topAppAct !== itemData.desktopId && topAppAct !== itemData.appClass) {
+                args.push(topAppAct)
+            }
+        }
         var targetArg = root.targetWindowArg(itemData, targetIndex)
         if (targetArg) {
             args.push(targetArg)

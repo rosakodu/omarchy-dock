@@ -124,5 +124,58 @@ class FindDesktopFileTest(unittest.TestCase):
         self.assertEqual(dm.find_desktop_file(None), "")
 
 
+class ChromePWAMatchingTest(unittest.TestCase):
+    def test_real_world_chrome_pwa_classes(self):
+        # Issue #28 real-world examples:
+        # 1. Teams
+        q_teams = 'google-chrome-stable --profile-directory="Profile 1" --app="https://teams.microsoft.com/"'
+        self.assertTrue(dm.match_chrome_pwa("chrome-teams.microsoft.com__-Profile_1", q_teams))
+
+        # 2. Outlook
+        q_outlook = 'google-chrome-stable --profile-directory="Profile 1" --app="https://outlook.office.com/mail/"'
+        self.assertTrue(dm.match_chrome_pwa("chrome-outlook.office.com__mail_-Profile_1", q_outlook))
+
+        # 3. Excel
+        q_excel = 'google-chrome-stable --profile-directory="Profile 1" --app="https://excel.cloud.microsoft/"'
+        self.assertTrue(dm.match_chrome_pwa("chrome-excel.cloud.microsoft__-Profile_1", q_excel))
+
+    def test_profile_isolation(self):
+        # Profile 2 should not match a window from Profile 1
+        q_prof2 = 'google-chrome-stable --profile-directory="Profile 2" --app="https://outlook.office.com/mail/"'
+        self.assertFalse(dm.match_chrome_pwa("chrome-outlook.office.com__mail_-Profile_1", q_prof2))
+        self.assertTrue(dm.match_chrome_pwa("chrome-outlook.office.com__mail_-Profile_2", q_prof2))
+
+    def test_fallback_when_no_profile_specified(self):
+        q_no_prof = 'google-chrome-stable --app="https://outlook.office.com/mail/"'
+        self.assertTrue(dm.match_chrome_pwa("chrome-outlook.office.com__mail_-Profile_1", q_no_prof))
+        self.assertTrue(dm.match_chrome_pwa("chrome-outlook.office.com__mail_-Default", q_no_prof))
+
+    def test_browser_variants(self):
+        q = 'brave-browser --app="https://teams.microsoft.com/"'
+        self.assertTrue(dm.match_chrome_pwa("brave-teams.microsoft.com__-Default", q))
+        q_edge = 'microsoft-edge --app="https://teams.microsoft.com/"'
+        self.assertTrue(dm.match_chrome_pwa("msedge-teams.microsoft.com__-Default", q_edge))
+        self.assertTrue(dm.match_chrome_pwa("edge-teams.microsoft.com__-Default", q_edge))
+
+    def test_app_id_pwa(self):
+        q = 'google-chrome-stable --profile-directory="Default" --app-id="appgkjomdnhhdolojlpkjafpklojikld"'
+        self.assertTrue(dm.match_chrome_pwa("chrome-appgkjomdnhhdolojlpkjafpklojikld-Default", q))
+        self.assertFalse(dm.match_chrome_pwa("chrome-appgkjomdnhhdolojlpkjafpklojikld-Profile_1", q))
+
+    def test_non_pwa_does_not_match(self):
+        self.assertFalse(dm.match_chrome_pwa("foot", 'foot -e nvim'))
+        self.assertFalse(dm.match_chrome_pwa("google-chrome", 'google-chrome-stable'))
+
+
+class PickTargetExplicitAddressTest(unittest.TestCase):
+    def test_address_resolved_from_all_clients_even_if_not_in_matching(self):
+        target_win = _client("0xTARGET")
+        other_win = _client("0xOTHER")
+        all_clients = [other_win, target_win]
+        # matching list is empty because class heuristic missed it
+        picked = dm.pick_target([], [], [], "0xtarget", -1, "", all_clients=all_clients)
+        self.assertIs(picked, target_win)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -359,4 +359,35 @@ TestCase {
         verify(cands3.indexOf("claude-desktop") !== -1)
         verify(cands3.indexOf("claude") !== -1)
     }
+
+    function test_chromeWebAppMatching() {
+        var outlookEntry = {
+            id: "outlook.desktop",
+            name: "Microsoft Outlook",
+            exec: 'google-chrome-stable --profile-directory="Profile 1" --app="https://outlook.office.com/mail/"',
+            icon: "outlook"
+        }
+        var entries = [outlookEntry]
+        var top = { appId: "chrome-outlook.office.com__mail_-Profile_1", title: "Outlook" }
+
+        // 1. matchToplevel: Top should match outlook entry
+        compare(DockMatcher.matchToplevel(top, "outlook", outlookEntry, entries), true)
+
+        // 2. buildDockItems: Unpinned item should match, resolve desktop ID, and preserve appClass
+        var unpinnedItems = DockMatcher.buildDockItems([], [top], top, entries, null, {}, {}, 0, [])
+        compare(unpinnedItems.length, 1)
+        compare(unpinnedItems[0].desktopId, "outlook.desktop")
+        compare(unpinnedItems[0].appId, "outlook")
+        compare(unpinnedItems[0].appClass, "chrome-outlook.office.com__mail_-Profile_1")
+        compare(unpinnedItems[0].isRunning, true)
+        compare(unpinnedItems[0].isActive, true)
+
+        // 3. buildDockItems: Pinned item should match running window and preserve appClass
+        var pinnedItems = DockMatcher.buildDockItems(["outlook"], [top], top, entries, null, {}, {}, 0, [])
+        compare(pinnedItems.length, 1)
+        compare(pinnedItems[0].desktopId, "outlook.desktop")
+        compare(pinnedItems[0].appClass, "chrome-outlook.office.com__mail_-Profile_1")
+        compare(pinnedItems[0].isRunning, true)
+        compare(pinnedItems[0].isActive, true)
+    }
 }
