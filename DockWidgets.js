@@ -192,7 +192,10 @@ function switchDockWidgetInBar(shell, newWidgetId, prevWidgetIds, savedPositions
     };
 
     if (shell && typeof shell.mutateShellConfig === "function") {
-        shell.mutateShellConfig(mutator);
+        // Omarchy 4.0.3 answers false for third-party plugins and skips the
+        // write; the file branch below is what persists on a scoped host.
+        if (shell.mutateShellConfig(mutator) === false)
+            console.warn("dock: shell declined the config write, editing shell.json directly");
     }
     if (shellConfigFile && typeof shellConfigFile.text === "function" && typeof shellConfigFile.setText === "function") {
         try {
@@ -202,7 +205,9 @@ function switchDockWidgetInBar(shell, newWidgetId, prevWidgetIds, savedPositions
                 mutator(config);
                 shellConfigFile.setText(JSON.stringify(config, null, 2) + "\n");
             }
-        } catch(e) {}
+        } catch(e) {
+            console.warn("dock: could not write shell.json directly:", e);
+        }
     }
 
     return savedPositions;
@@ -269,7 +274,10 @@ function removeWidgetFromBar(shell, widgetId, savedPositions, shellConfigFile) {
     };
 
     if (shell && typeof shell.mutateShellConfig === "function") {
-        shell.mutateShellConfig(mutator);
+        // Omarchy 4.0.3 answers false for third-party plugins and skips the
+        // write; the file branch below is what persists on a scoped host.
+        if (shell.mutateShellConfig(mutator) === false)
+            console.warn("dock: shell declined the config write, editing shell.json directly");
     }
     if (shellConfigFile && typeof shellConfigFile.text === "function" && typeof shellConfigFile.setText === "function") {
         try {
@@ -279,7 +287,9 @@ function removeWidgetFromBar(shell, widgetId, savedPositions, shellConfigFile) {
                 mutator(config);
                 shellConfigFile.setText(JSON.stringify(config, null, 2) + "\n");
             }
-        } catch(e) {}
+        } catch(e) {
+            console.warn("dock: could not write shell.json directly:", e);
+        }
     }
     return savedPositions;
 }
@@ -463,7 +473,10 @@ function returnWidgetToBar(shell, widgetId, savedPositions, defaultRegion, shell
     };
 
     if (shell && typeof shell.mutateShellConfig === "function") {
-        shell.mutateShellConfig(mutator);
+        // Omarchy 4.0.3 answers false for third-party plugins and skips the
+        // write; the file branch below is what persists on a scoped host.
+        if (shell.mutateShellConfig(mutator) === false)
+            console.warn("dock: shell declined the config write, editing shell.json directly");
     }
     if (shellConfigFile && typeof shellConfigFile.text === "function" && typeof shellConfigFile.setText === "function") {
         try {
@@ -473,7 +486,9 @@ function returnWidgetToBar(shell, widgetId, savedPositions, defaultRegion, shell
                 mutator(config);
                 shellConfigFile.setText(JSON.stringify(config, null, 2) + "\n");
             }
-        } catch(e) {}
+        } catch(e) {
+            console.warn("dock: could not write shell.json directly:", e);
+        }
     }
 
     delete savedPositions[widgetId];
