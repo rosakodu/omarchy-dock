@@ -25,13 +25,20 @@ Item {
     property bool opened: true
     property bool pluginEnabled: true
     property string shellConfigPath: Quickshell.env("HOME") + "/.config/omarchy/shell.json"
-    property string detectedBarPosition: "top"
-    property bool detectedBarTransparent: false
+    property string detectedBarPosition: {
+        if (shell && shell.barConfig && shell.barConfig.position) return shell.barConfig.position
+        return "top"
+    }
+    property bool detectedBarTransparent: {
+        if (shell && shell.barConfig && typeof shell.barConfig.transparent === "boolean") {
+            return shell.barConfig.transparent
+        }
+        return false
+    }
 
     // Live bar position (only used to position the dock on the opposite side of the screen)
     property string barPosition: {
         if (shell && shell.bar && shell.bar.position) return shell.bar.position
-        if (shell && shell.barConfig && shell.barConfig.position) return shell.barConfig.position
         return detectedBarPosition
     }
     readonly property bool isVertical: barPosition === "left" || barPosition === "right"
@@ -47,8 +54,7 @@ Item {
 
     // Live Bar & Tray Transparency Tracking (Auto-syncs dock with bar & tray glassmorphism)
     readonly property bool isBarTransparent: {
-        if (shell && shell.bar && shell.bar.transparent !== undefined) return (shell.bar.transparent === true)
-        if (shell && shell.barConfig && shell.barConfig.transparent !== undefined) return (shell.barConfig.transparent === true)
+        if (shell && shell.bar && typeof shell.bar.transparent === "boolean") return shell.bar.transparent
         return detectedBarTransparent
     }
 
@@ -310,40 +316,32 @@ Item {
         root.pluginEnabled = true
     }
 
+    function parseShellConfigFile() {
+        root.updatePluginEnabled()
+        try {
+            var raw = shellConfigFile.text()
+            if (raw && raw.length > 0) {
+                var cfg = JSON.parse(raw)
+                if (cfg && cfg.bar) {
+                    if (cfg.bar.position && root.detectedBarPosition !== cfg.bar.position) {
+                        root.detectedBarPosition = cfg.bar.position
+                    }
+                    if (cfg.bar.transparent !== undefined && root.detectedBarTransparent !== (cfg.bar.transparent === true)) {
+                        root.detectedBarTransparent = (cfg.bar.transparent === true)
+                    }
+                }
+            }
+        } catch(e) {}
+    }
+
     FileView {
         id: shellConfigFile
         path: root.shellConfigPath
         watchChanges: true
+        atomicWrites: true
         printErrors: false
-        onLoaded: {
-            root.updatePluginEnabled()
-            try {
-                var cfg = JSON.parse(text())
-                if (cfg && cfg.bar) {
-                    if (cfg.bar.position && root.detectedBarPosition !== cfg.bar.position) {
-                        root.detectedBarPosition = cfg.bar.position
-                    }
-                    if (cfg.bar.transparent !== undefined && root.detectedBarTransparent !== (cfg.bar.transparent === true)) {
-                        root.detectedBarTransparent = (cfg.bar.transparent === true)
-                    }
-                }
-            } catch(e) {}
-        }
-        onFileChanged: {
-            reload()
-            root.updatePluginEnabled()
-            try {
-                var cfg = JSON.parse(text())
-                if (cfg && cfg.bar) {
-                    if (cfg.bar.position && root.detectedBarPosition !== cfg.bar.position) {
-                        root.detectedBarPosition = cfg.bar.position
-                    }
-                    if (cfg.bar.transparent !== undefined && root.detectedBarTransparent !== (cfg.bar.transparent === true)) {
-                        root.detectedBarTransparent = (cfg.bar.transparent === true)
-                    }
-                }
-            } catch(e) {}
-        }
+        onLoaded: root.parseShellConfigFile()
+        onFileChanged: reload()
     }
 
     // Dock visibility, placement, and folder settings
@@ -2407,16 +2405,7 @@ Item {
         if (Hyprland.focusedMonitor) {
             root.baseDockMonitorName = String(Hyprland.focusedMonitor.name || "")
         }
-        try {
-            var scTxt = shellConfigFile.text()
-            if (scTxt && scTxt.trim().length > 0) {
-                var sc = JSON.parse(scTxt)
-                if (sc && sc.bar) {
-                    if (sc.bar.position) root.detectedBarPosition = sc.bar.position
-                    if (sc.bar.transparent !== undefined) root.detectedBarTransparent = (sc.bar.transparent === true)
-                }
-            }
-        } catch(e) {}
+        root.parseShellConfigFile()
         try {
             var txt = userPinnedFile.text()
             if (txt && txt.trim().length > 0) {
@@ -2577,6 +2566,7 @@ Item {
                 WlrLayershell.keyboardFocus: root.isEditMode ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
                 exclusionMode: root.dockRevealed && !root.overlayMode ? ExclusionMode.Auto : ExclusionMode.Ignore
                 color: "transparent"
+                surfaceFormat.opaque: false
 
                 // Input region. While the dock is slid out its card is
                 // translated off the window and the HoverHandler below is
