@@ -9,6 +9,10 @@ var VISIBILITY_OVERRIDE_HIDDEN = -1
 var VISIBILITY_OVERRIDE_FOLLOW = 0
 var VISIBILITY_OVERRIDE_SHOWN = 1
 
+var DEFAULT_AUTOHIDE_DELAY = 1500
+var MIN_AUTOHIDE_DELAY = 100
+var MAX_AUTOHIDE_DELAY = 10000
+
 function normalizeVisibilityMode(value, legacyAutohide) {
     var mode = String(value === undefined || value === null ? "" : value).trim().toLowerCase()
     if (mode === VISIBILITY_ALWAYS || mode === VISIBILITY_HOVER || mode === VISIBILITY_KEYBIND || mode === VISIBILITY_HYBRID) {
@@ -40,12 +44,21 @@ function normalizeVisibleWorkspace(value) {
     return workspace === "" || workspace.toLowerCase() === "all" ? "all" : workspace
 }
 
+function normalizeAutohideDelay(value) {
+    var delay = parseInt(value, 10)
+    if (isNaN(delay)) return DEFAULT_AUTOHIDE_DELAY
+    if (delay < MIN_AUTOHIDE_DELAY) return MIN_AUTOHIDE_DELAY
+    if (delay > MAX_AUTOHIDE_DELAY) return MAX_AUTOHIDE_DELAY
+    return delay
+}
+
 function normalize(raw) {
     var settings = raw && typeof raw === "object" ? raw : {}
     return {
         visibilityMode: normalizeVisibilityMode(settings.visibilityMode, settings.autohide),
         overlayMode: normalizeOverlayMode(settings.overlayMode, settings.spaceMode),
-        visibleWorkspace: normalizeVisibleWorkspace(settings.visibleWorkspace)
+        visibleWorkspace: normalizeVisibleWorkspace(settings.visibleWorkspace),
+        autohideDelay: normalizeAutohideDelay(settings.autohideDelay)
     }
 }
 

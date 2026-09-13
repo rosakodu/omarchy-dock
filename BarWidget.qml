@@ -19,6 +19,7 @@ BarWidget {
   readonly property bool autohide: root.visibilityMode !== "always"
   property bool overlayMode: false
   property string visibleWorkspace: "all"
+  property int autohideDelay: DockSettings.DEFAULT_AUTOHIDE_DELAY
   property bool showFolderTitles: true
   property bool showBadges: true
   property bool widgetsEnabled: true
@@ -72,6 +73,7 @@ BarWidget {
         }
         root.overlayMode = normalized.overlayMode
         root.visibleWorkspace = normalized.visibleWorkspace
+        root.autohideDelay = normalized.autohideDelay
         if (s && s.dockEnabled !== undefined) {
           root.dockEnabled = (s.dockEnabled === true || s.dockEnabled === "true" || s.dockEnabled === 1 || s.dockEnabled === "1")
         } else {
@@ -119,6 +121,7 @@ BarWidget {
     s.autohide = DockSettings.legacyAutohide(root.visibilityMode)
     s.overlayMode = root.overlayMode
     s.visibleWorkspace = root.visibleWorkspace
+    s.autohideDelay = root.autohideDelay
     s.showFolderTitles = root.showFolderTitles
     s.showBadges = root.showBadges
     s.widgetsEnabled = root.widgetsEnabled
@@ -204,6 +207,38 @@ BarWidget {
     if (root.bar && typeof root.bar.run === "function") {
       root.bar.run("omarchy-shell rosakodu.dock setVisibleWorkspace " + root.visibleWorkspace)
     }
+  }
+
+  function setAutohideDelay(val) {
+    root.autohideDelay = DockSettings.normalizeAutohideDelay(val)
+    saveSettings()
+    if (root.bar && typeof root.bar.run === "function") {
+      root.bar.run("omarchy-shell rosakodu.dock setAutohideDelay " + root.autohideDelay)
+    }
+  }
+
+  readonly property var autohideDelayPresets: [
+    { value: "500", label: "0.5 seconds" },
+    { value: "1000", label: "1 second" },
+    { value: "1500", label: "1.5 seconds (default)" },
+    { value: "2000", label: "2 seconds" },
+    { value: "3000", label: "3 seconds" },
+    { value: "5000", label: "5 seconds" }
+  ]
+
+  function buildAutohideDelayOptions() {
+    var opts = root.autohideDelayPresets.slice()
+    var current = String(root.autohideDelay)
+    var isPreset = opts.some(function(o) { return o.value === current })
+    if (!isPreset) {
+      opts.push({ value: current, label: "Custom (" + root.autohideDelay + " ms)" })
+    }
+    return opts
+  }
+
+  readonly property var autohideDelayOptions: {
+    var _sel = root.autohideDelay
+    return root.buildAutohideDelayOptions()
   }
 
   function buildWorkspaceOptions() {
@@ -510,7 +545,30 @@ BarWidget {
           }
         }
 
-        // 4. Keyboard shortcut toggle
+        // 4. Autohide delay (only meaningful while autohide dismissal applies)
+        ColumnLayout {
+          id: autohideDelayCard
+          Layout.fillWidth: true
+          readonly property bool active: root.dockEnabled && root.visibilityMode !== "always"
+          Layout.preferredHeight: active ? autohideDelayDropdown.implicitHeight : 0
+          Layout.minimumHeight: 0
+          clip: true
+          visible: Layout.preferredHeight > 0
+          spacing: 0
+          Behavior on Layout.preferredHeight { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+
+          DockDropdown {
+            id: autohideDelayDropdown
+            Layout.fillWidth: true
+            showLabel: true
+            label: "Autohide delay"
+            value: String(root.autohideDelay)
+            options: root.autohideDelayOptions
+            onChanged: function(value) { root.setAutohideDelay(value) }
+          }
+        }
+
+        // 5. Keyboard shortcut toggle
         Rectangle {
           id: keybindRow
           Layout.fillWidth: true
@@ -591,7 +649,7 @@ BarWidget {
           }
         }
 
-        // 5. Shortcut Hint (smoothly appears ONLY when Keyboard shortcut is active)
+        // 6. Shortcut Hint (smoothly appears ONLY when Keyboard shortcut is active)
         ColumnLayout {
           id: shortcutHintCard
           Layout.fillWidth: true

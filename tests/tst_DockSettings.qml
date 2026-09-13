@@ -10,6 +10,7 @@ TestCase {
         compare(settings.visibilityMode, "always")
         compare(settings.overlayMode, false)
         compare(settings.visibleWorkspace, "all")
+        compare(settings.autohideDelay, 1500)
     }
 
     function test_legacyAutohideMigration_data() {
@@ -239,5 +240,20 @@ TestCase {
 
         compare(decision.action, "workspace-unavailable")
         compare(decision.targetWorkspace, "")
+    }
+
+    function test_normalizeAutohideDelay_data() {
+        return [
+            { tag: "default-undefined", input: undefined, expected: 1500 },
+            { tag: "default-null", input: null, expected: 1500 },
+            { tag: "clamp-low", input: 10, expected: 100 },
+            { tag: "clamp-high", input: 20000, expected: 10000 },
+            { tag: "string-numeric", input: "2500", expected: 2500 },
+            { tag: "garbage", input: "not-a-number", expected: 1500 }
+        ]
+    }
+
+    function test_normalizeAutohideDelay(data) {
+        compare(DockSettings.normalizeAutohideDelay(data.input), data.expected)
     }
 }
