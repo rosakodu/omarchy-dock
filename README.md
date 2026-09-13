@@ -68,6 +68,7 @@ You can customize options directly via the `···` status bar widget or in `~/.
   "visibilityMode": "always",
   "overlayMode": false,
   "visibleWorkspace": "all",
+  "autohideDelay": 1500,
   "showFolderTitles": true,
   "showBadges": true,
   "widgetsEnabled": true,
@@ -86,6 +87,12 @@ workspace name. With `all`, a keyboard opening targets the workspace and
 monitor containing the focused window and keeps that target until the dock is
 closed. With an explicit selector, the dock always targets that workspace and
 can open only while the workspace is active on a monitor.
+`autohideDelay` sets, in milliseconds, how long the dock waits after the
+pointer leaves it (hover/hybrid mode) or after a keybind reveal (keybind/hybrid
+mode) before dismissing itself, clamped between 100 and 10000 (default
+`1500`). The `···` status bar widget's "Autohide delay" dropdown offers 0.5,
+1, 1.5 (default), 2, 3, and 5 second presets, and shows a "Custom" entry
+whenever the stored value doesn't match one of them.
 
 ### Keyboard toggle
 
@@ -105,8 +112,9 @@ accepts only the screen-edge trigger. In `hybrid` mode, both the screen-edge hov
 trigger and keyboard shortcuts operate concurrently. If the dock is already visible, the first
 press closes it without moving it and the next press opens it on the current
 target. In `keybind` and `hybrid` modes, summoned docks automatically hide after
-the same 1.5-second inactivity delay used by hover mode. Keeping the pointer or
-a dock popup active pauses the dismissal timer.
+the same configurable inactivity delay used by hover mode (`autohideDelay`,
+default 1.5 seconds). Keeping the pointer or a dock popup active pauses the
+dismissal timer.
 
 Pinned items and folder layouts are automatically saved to `~/.config/omarchy/dock-pinned.json`.
 

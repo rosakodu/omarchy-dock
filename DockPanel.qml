@@ -62,6 +62,9 @@ Item {
     readonly property real slotSize: 42
     readonly property real iconBaseSize: 24
 
+    // Autohide dismissal delay (hover/hybrid pointer-leave and keybind auto-dismiss)
+    property int autohideDelay: DockSettings.DEFAULT_AUTOHIDE_DELAY
+
     // Live 1D Rail Displacement for Main Dock Bar
     property int dockDragActiveIndex: -1
     property int dockDragTargetIndex: -1
@@ -120,6 +123,7 @@ Item {
         function setShowFolderTitles(val: string): string { root.showFolderTitles = (val === "true" || val === "1"); root.saveSettings(); return "ok" }
         function setShowBadges(val: string): string { root.showBadges = (val === "true" || val === "1"); root.saveSettings(); return "ok" }
         function setOverlayMode(val: string): string { root.overlayMode = (val === "true" || val === "1"); root.saveSettings(); return "ok" }
+        function setAutohideDelay(val: string): string { root.setAutohideDelay(val); return "ok" }
         function ping(): string { return "ok" }
     }
 
@@ -594,7 +598,7 @@ Item {
 
     Timer {
         id: autohideLeaveTimer
-        interval: 1500
+        interval: root.autohideDelay
         repeat: false
         onTriggered: {
             if (!root.autohide) return
@@ -897,6 +901,7 @@ Item {
                 }
                 root.overlayMode = normalized.overlayMode
                 root.visibleWorkspace = normalized.visibleWorkspace
+                root.autohideDelay = normalized.autohideDelay
                 if (s.dockEnabled !== undefined) {
                     root.dockEnabled = (s.dockEnabled === true || s.dockEnabled === "true" || s.dockEnabled === 1 || s.dockEnabled === "1")
                 } else {
@@ -970,6 +975,7 @@ Item {
             autohide: DockSettings.legacyAutohide(root.visibilityMode),
             overlayMode: root.overlayMode,
             visibleWorkspace: root.visibleWorkspace,
+            autohideDelay: root.autohideDelay,
             autohideEdgeDepth: root.autohideEdgeDepth,
             showFolderTitles: root.showFolderTitles,
             showBadges: root.showBadges,
@@ -1021,6 +1027,11 @@ Item {
     function setOverlayMode(val) {
         root.overlayMode = (val === true || val === "true")
         root.saveSettings()
+    }
+
+    function setAutohideDelay(val) {
+        root.autohideDelay = DockSettings.normalizeAutohideDelay(val)
+        saveSettings()
     }
 
     function setShowAppMenu(val) {
