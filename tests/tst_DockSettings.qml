@@ -200,6 +200,35 @@ TestCase {
         compare(DockSettings.screenShowsDock(data.target, data.screen, data.configured, data.captured, data.focused), data.expected)
     }
 
+    function test_screenRevealTarget_data() {
+        return [
+            { tag: "always-ignores-reveal", mode: "always", workspace: "all", reveal: "DP-1", focused: "DP-2", expected: "" },
+            { tag: "explicit-workspace-ignores-reveal", mode: "hover", workspace: "7", reveal: "DP-1", focused: "DP-2", expected: "" },
+            { tag: "hover-uses-reveal-monitor", mode: "hover", workspace: "all", reveal: "DP-1", focused: "DP-2", expected: "DP-1" },
+            { tag: "hover-falls-back-to-focused", mode: "hover", workspace: "all", reveal: "", focused: "DP-2", expected: "DP-2" },
+            { tag: "hybrid-uses-reveal-monitor", mode: "hybrid", workspace: "all", reveal: "eDP-1", focused: "DP-2", expected: "eDP-1" },
+            { tag: "keybind-falls-back-to-focused", mode: "keybind", workspace: "all", reveal: "", focused: "DP-2", expected: "DP-2" },
+            { tag: "no-reveal-no-focus", mode: "hover", workspace: "all", reveal: "", focused: "", expected: "" }
+        ]
+    }
+
+    function test_screenRevealTarget(data) {
+        compare(DockSettings.screenRevealTarget(data.mode, data.workspace, data.reveal, data.focused), data.expected)
+    }
+
+    function test_screenSlidesOut_data() {
+        return [
+            { tag: "global-slide-out-wins", globalSlide: true, target: "DP-1", screen: "DP-1", expected: true },
+            { tag: "no-target-means-all-screens-follow-global", globalSlide: false, target: "", screen: "DP-1", expected: false },
+            { tag: "target-matches-screen-stays-in", globalSlide: false, target: "DP-1", screen: "DP-1", expected: false },
+            { tag: "target-is-other-screen-slides-out", globalSlide: false, target: "DP-1", screen: "DP-2", expected: true }
+        ]
+    }
+
+    function test_screenSlidesOut(data) {
+        compare(DockSettings.screenSlidesOut(data.globalSlide, data.target, data.screen), data.expected)
+    }
+
     function test_visibleDockClosesWithoutRetargeting() {
         var focusedWorkspace = { id: 2, name: "2", active: true }
         var decision = DockSettings.keyboardToggleDecision(true, "all", focusedWorkspace, null)

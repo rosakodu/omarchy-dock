@@ -107,6 +107,27 @@ function releaseInteractionVisibilityOverride(owned, previousOverride, currentOv
         : normalizeVisibilityOverride(currentOverride)
 }
 
+// Which screen's dock should slide in on a reveal. Returns "" to mean "every
+// screen" (always mode, or an explicit visibleWorkspace selector, both of
+// which are already single- or all-screen by construction). Otherwise the
+// screen that triggered the reveal wins, falling back to the focused screen
+// for reveals with no specific trigger (e.g. the keyboard toggle finding no
+// focused monitor, or the empty-workspace auto-reveal).
+function screenRevealTarget(visibilityMode, visibleWorkspace, revealMonitorName, focusedMonitorName) {
+    var mode = normalizeVisibilityMode(visibilityMode, false)
+    if (mode === VISIBILITY_ALWAYS) return ""
+    if (normalizeVisibleWorkspace(visibleWorkspace) !== "all") return ""
+    if (revealMonitorName) return String(revealMonitorName)
+    if (focusedMonitorName) return String(focusedMonitorName)
+    return ""
+}
+
+// Per-screen slide-out state: slid out globally, or slid out because another
+// screen is the current reveal target.
+function screenSlidesOut(globalShouldSlideOut, target, screenName) {
+    return globalShouldSlideOut === true || (target !== "" && String(screenName) !== target)
+}
+
 function dockScreenTarget(visibleWorkspace, visibilityMode, visibilityOverride) {
     if (normalizeVisibleWorkspace(visibleWorkspace) !== "all") return "configured"
     return "all"
