@@ -22,7 +22,7 @@ A modern, highly polished, and fully native application dock plugin for **Omarch
 - ⏱️ **Flexible Visibility** — Keep the dock visible, reveal it from the screen edge, or toggle it through a Hyprland keybinding.
 - 🪟 **Native Overlay Mode** — Float the dock above full-screen/tiling windows without shifting Hyprland window arrangements (macOS / Dash to Dock behavior).
 - 🔔 **Real-Time Notification Badges** — Dynamic unread badges on app icons aggregated from D-Bus notifications, Hyprland dwell timers, and window titles.
-- 🎛️ **Status Bar Settings Widget (`BarWidget`)** — Native top bar menu for dock visibility, workspace targeting, Overlay Mode, folder titles, notification badges, and dock widgets.
+- 🎛️ **Status Bar Settings Widget (`BarWidget`)** — Native top bar menu for dock visibility, workspace targeting, Overlay Mode, folder titles, notification badges, and dock widgets; the settings card opens directly beneath the widget wherever it's placed in the bar (left, center, or right).
 - 🎨 **100% Native Theme Sync** — Clean borderless status capsules that automatically react to Omarchy colors (`Color.accent`, `Color.bar.background`), system fonts, and window corner radius tokens.
 - 🔤 **Subpixel Vector Glyphs (`DockGlyph`)** — GPU-accelerated vector curve rendering without font hinting distortion or pixel jitter during animations.
 
