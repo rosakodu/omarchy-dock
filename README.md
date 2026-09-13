@@ -68,6 +68,7 @@ You can customize options directly via the `···` status bar widget or in `~/.
   "visibilityMode": "always",
   "overlayMode": false,
   "visibleWorkspace": "all",
+  "iconSize": 24,
   "showFolderTitles": true,
   "showBadges": true,
   "widgetsEnabled": true,
@@ -86,6 +87,11 @@ workspace name. With `all`, a keyboard opening targets the workspace and
 monitor containing the focused window and keeps that target until the dock is
 closed. With an explicit selector, the dock always targets that workspace and
 can open only while the workspace is active on a monitor.
+`iconSize` sets the icon pixel size, clamped between 16 and 64 (default `24`); the
+slot spacing, badges, and other dock geometry scale proportionally with it. The
+`···` status bar widget's "Dock size" dropdown offers Small (20), Medium (24,
+default), Large (32), and Extra large (40) presets, and shows a "Custom" entry
+whenever the stored value doesn't match one of them.
 
 ### Keyboard toggle
 

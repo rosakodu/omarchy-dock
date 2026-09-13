@@ -19,6 +19,7 @@ BarWidget {
   readonly property bool autohide: root.visibilityMode !== "always"
   property bool overlayMode: false
   property string visibleWorkspace: "all"
+  property int iconSize: DockSettings.DEFAULT_ICON_SIZE
   property bool showFolderTitles: true
   property bool showBadges: true
   property bool widgetsEnabled: true
@@ -72,6 +73,7 @@ BarWidget {
         }
         root.overlayMode = normalized.overlayMode
         root.visibleWorkspace = normalized.visibleWorkspace
+        root.iconSize = normalized.iconSize
         if (s && s.dockEnabled !== undefined) {
           root.dockEnabled = (s.dockEnabled === true || s.dockEnabled === "true" || s.dockEnabled === 1 || s.dockEnabled === "1")
         } else {
@@ -119,6 +121,7 @@ BarWidget {
     s.autohide = DockSettings.legacyAutohide(root.visibilityMode)
     s.overlayMode = root.overlayMode
     s.visibleWorkspace = root.visibleWorkspace
+    s.iconSize = root.iconSize
     s.showFolderTitles = root.showFolderTitles
     s.showBadges = root.showBadges
     s.widgetsEnabled = root.widgetsEnabled
@@ -204,6 +207,36 @@ BarWidget {
     if (root.bar && typeof root.bar.run === "function") {
       root.bar.run("omarchy-shell rosakodu.dock setVisibleWorkspace " + root.visibleWorkspace)
     }
+  }
+
+  function setIconSize(val) {
+    root.iconSize = DockSettings.normalizeIconSize(val)
+    saveSettings()
+    if (root.bar && typeof root.bar.run === "function") {
+      root.bar.run("omarchy-shell rosakodu.dock setIconSize " + root.iconSize)
+    }
+  }
+
+  readonly property var iconSizePresets: [
+    { value: "20", label: "Small" },
+    { value: "24", label: "Medium (default)" },
+    { value: "32", label: "Large" },
+    { value: "40", label: "Extra large" }
+  ]
+
+  function buildIconSizeOptions() {
+    var opts = root.iconSizePresets.slice()
+    var current = String(root.iconSize)
+    var isPreset = opts.some(function(o) { return o.value === current })
+    if (!isPreset) {
+      opts.push({ value: current, label: "Custom (" + root.iconSize + " px)" })
+    }
+    return opts
+  }
+
+  readonly property var iconSizeOptions: {
+    var _sel = root.iconSize
+    return root.buildIconSizeOptions()
   }
 
   function buildWorkspaceOptions() {
@@ -429,7 +462,17 @@ BarWidget {
           onChanged: function(value) { root.setVisibleWorkspace(value) }
         }
 
-        // 3. Autohide dock (edge hover)
+        // 3. Dock Size Dropdown
+        DockDropdown {
+          Layout.fillWidth: true
+          showLabel: true
+          label: "Dock size"
+          value: String(root.iconSize)
+          options: root.iconSizeOptions
+          onChanged: function(value) { root.setIconSize(value) }
+        }
+
+        // 4. Autohide dock (edge hover)
         Rectangle {
           id: autohideRow
           Layout.fillWidth: true
@@ -510,7 +553,7 @@ BarWidget {
           }
         }
 
-        // 4. Keyboard shortcut toggle
+        // 5. Keyboard shortcut toggle
         Rectangle {
           id: keybindRow
           Layout.fillWidth: true
@@ -591,7 +634,7 @@ BarWidget {
           }
         }
 
-        // 5. Shortcut Hint (smoothly appears ONLY when Keyboard shortcut is active)
+        // 6. Shortcut Hint (smoothly appears ONLY when Keyboard shortcut is active)
         ColumnLayout {
           id: shortcutHintCard
           Layout.fillWidth: true
