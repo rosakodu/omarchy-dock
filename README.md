@@ -19,7 +19,7 @@ A modern, highly polished, and fully native application dock plugin for **Omarch
 - 🌐 **Full Web Apps (PWA) Support** — Automatic domain matching for Chrome/Chromium web apps (Google Maps, Google Contacts, WhatsApp, YouTube, Discord, etc.) with native GTK theme icons.
 - ⚡ **Zero-Flicker Boot & Tile Lift** — Two-phase initialization instantly reserves Hyprland exclusive space to lift tiled windows smoothly, followed by a monolithic fade-in once all vector theme icons are loaded.
 - 🧭 **Dynamic Auto-Positioning** — Automatically adapts its position opposite to the Omarchy status bar (top $\leftrightarrow$ bottom, left $\leftrightarrow$ right) and draws a dock on every connected monitor.
-- ⏱️ **Flexible Visibility** — Keep the dock visible, reveal it from the screen edge, or toggle it through a Hyprland keybinding.
+- ⏱️ **Flexible Visibility** — Keep the dock visible, reveal it from the screen edge, or toggle it through a Hyprland keybinding. On multi-monitor setups with an autohide mode, a reveal only slides the dock in on the monitor that triggered it; the others stay hidden with their edge triggers still armed.
 - 🪟 **Native Overlay Mode** — Float the dock above full-screen/tiling windows without shifting Hyprland window arrangements (macOS / Dash to Dock behavior).
 - 🔔 **Real-Time Notification Badges** — Dynamic unread badges on app icons aggregated from D-Bus notifications, Hyprland dwell timers, and window titles.
 - 🎛️ **Status Bar Settings Widget (`BarWidget`)** — Native top bar menu for dock visibility, workspace targeting, Overlay Mode, folder titles, notification badges, and dock widgets.
@@ -106,7 +106,11 @@ trigger and keyboard shortcuts operate concurrently. If the dock is already visi
 press closes it without moving it and the next press opens it on the current
 target. In `keybind` and `hybrid` modes, summoned docks automatically hide after
 the same 1.5-second inactivity delay used by hover mode. Keeping the pointer or
-a dock popup active pauses the dismissal timer.
+a dock popup active pauses the dismissal timer. With `visibleWorkspace` set to
+`all` on a multi-monitor setup, the keyboard shortcut reveals the dock only on
+the currently focused monitor, and hovering a screen edge reveals only that
+screen's dock — the other monitors' docks stay slid out until their own edge
+is hovered or the shortcut is used while they are focused.
 
 Pinned items and folder layouts are automatically saved to `~/.config/omarchy/dock-pinned.json`.
 

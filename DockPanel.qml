@@ -354,6 +354,11 @@ Item {
     property int visibilityOverride: DockSettings.VISIBILITY_OVERRIDE_FOLLOW
     property string keyboardTargetWorkspace: ""
     property string keyboardTargetMonitorName: ""
+    // Which screen triggered the current reveal (edge-hover screen, or the
+    // focused screen for a keyboard toggle). "" means no specific trigger is
+    // recorded, in which case screenRevealTarget() falls back to the focused
+    // monitor.
+    property string revealMonitorName: ""
     property string baseDockMonitorName: ""
     property bool widgetPickerRevealOwned: false
     property int widgetPickerPreviousVisibilityOverride: DockSettings.VISIBILITY_OVERRIDE_FOLLOW
@@ -667,6 +672,24 @@ Item {
         root.isWorkspaceEmpty
     )
 
+    // The screen whose dock should slide in for the current reveal, or "" if
+    // every screen's dock should (always mode, or an explicit visibleWorkspace
+    // selector).
+    readonly property string revealTargetMonitorName: DockSettings.screenRevealTarget(
+        root.visibilityMode,
+        root.visibleWorkspace,
+        root.revealMonitorName,
+        Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
+    )
+
+    function screenSlidesOut(screen) {
+        return DockSettings.screenSlidesOut(
+            root.shouldSlideOut,
+            root.revealTargetMonitorName,
+            screen ? screen.name : ""
+        )
+    }
+
     function closeDockPopups() {
         root.closePopups()
     }
@@ -692,6 +715,7 @@ Item {
             return "hidden"
         } else {
             autohideLeaveTimer.stop()
+            root.revealMonitorName = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
             root.visibilityOverride = DockSettings.VISIBILITY_OVERRIDE_SHOWN
             root.isDockHovered = true
             return "shown"
@@ -717,6 +741,7 @@ Item {
     onDockRevealedChanged: {
         if (!dockRevealed) {
             root.closeDockPopups()
+            root.revealMonitorName = ""
         }
     }
 
@@ -725,6 +750,7 @@ Item {
         root.visibilityOverride = DockSettings.VISIBILITY_OVERRIDE_FOLLOW
         root.keyboardTargetWorkspace = ""
         root.keyboardTargetMonitorName = ""
+        root.revealMonitorName = ""
         root.isDockHovered = false
         autohideLeaveTimer.stop()
     }
@@ -740,6 +766,7 @@ Item {
         root.visibilityOverride = DockSettings.VISIBILITY_OVERRIDE_FOLLOW
         root.keyboardTargetWorkspace = ""
         root.keyboardTargetMonitorName = ""
+        root.revealMonitorName = ""
     }
 
     property var lastRemapScreen: null
@@ -2528,6 +2555,17 @@ Item {
     readonly property var dockWindow: {
         var instances = dockVariants.instances
         var count = instances ? instances.length : 0
+        // When a reveal is targeting a specific (possibly non-focused) screen,
+        // popups should attach to that revealed instance instead of whichever
+        // screen has keyboard focus.
+        var targetName = root.revealTargetMonitorName !== "" ? root.revealTargetMonitorName : ""
+        if (targetName !== "") {
+            for (var t = 0; t < count; t++) {
+                var targetWin = instances[t]
+                if (targetWin && targetWin.screen && String(targetWin.screen.name || "") === targetName)
+                    return targetWin
+            }
+        }
         var focusedName = Hyprland.focusedMonitor ? String(Hyprland.focusedMonitor.name || "") : ""
         for (var i = 0; i < count; i++) {
             var win = instances[i]
@@ -2548,6 +2586,11 @@ Item {
                 required property var modelData
                 property alias surface: dockSurface
                 property alias hoverHandler: dockHoverHandler
+                // Per-screen slide state: this screen's own reveal state,
+                // unless another screen is the current reveal target (in
+                // which case this one stays/goes slid out even while
+                // root.shouldSlideOut is false).
+                readonly property bool slidOut: root.screenSlidesOut(modelData)
                 screen: modelData
                 visible: root.dockMapped && root.screenShowsDock(modelData) && !remapGuard.remapping
 
@@ -2564,7 +2607,7 @@ Item {
                 // lets fullscreen content win.
                 WlrLayershell.layer: root.autohide ? WlrLayer.Overlay : WlrLayer.Top
                 WlrLayershell.keyboardFocus: root.isEditMode ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
-                exclusionMode: root.dockRevealed && !root.overlayMode ? ExclusionMode.Auto : ExclusionMode.Ignore
+                exclusionMode: root.dockRevealed && !dockLayer.slidOut && !root.overlayMode ? ExclusionMode.Auto : ExclusionMode.Ignore
                 color: "transparent"
                 surfaceFormat.opaque: false
 
@@ -2576,8 +2619,8 @@ Item {
                 // -- for a dock that cannot be hovered anyway. Revealing it is
                 // the separate edge trigger's job. Hand the strip back.
                 mask: Region {
-                    width: root.shouldSlideOut ? 0 : dockLayer.width
-                    height: root.shouldSlideOut ? 0 : dockLayer.height
+                    width: dockLayer.slidOut ? 0 : dockLayer.width
+                    height: dockLayer.slidOut ? 0 : dockLayer.height
                 }
 
                 anchors {
@@ -2599,7 +2642,7 @@ Item {
 
                 HoverHandler {
                     id: dockHoverHandler
-                    enabled: root.autohide && !root.shouldSlideOut
+                    enabled: root.autohide && !dockLayer.slidOut
                     onHoveredChanged: {
                         root.evaluateHoverState()
                     }
@@ -2668,13 +2711,13 @@ Item {
             transform: Translate {
                 id: autohideTranslate
                 x: {
-                    if (!root.shouldSlideOut) return 0
+                    if (!dockLayer.slidOut) return 0
                     if (root.barPosition === "right") return -56
                     if (root.barPosition === "left") return 56
                     return 0
                 }
                 y: {
-                    if (!root.shouldSlideOut) return 0
+                    if (!dockLayer.slidOut) return 0
                     if (root.barPosition === "top") return 56
                     if (root.barPosition === "bottom") return -56
                     return 0
@@ -3259,7 +3302,7 @@ Item {
                 screen: modelData
                 visible: root.dockAvailable
                          && (root.visibilityMode === "hover" || root.visibilityMode === "hybrid")
-                         && root.shouldSlideOut
+                         && root.screenSlidesOut(modelData)
                          && root.screenShowsDock(modelData)
 
                 WlrLayershell.namespace: "omarchy-dock-edge"
@@ -3304,6 +3347,7 @@ Item {
                                 if (root.visibilityOverride === DockSettings.VISIBILITY_OVERRIDE_HIDDEN) {
                                     root.visibilityOverride = DockSettings.VISIBILITY_OVERRIDE_FOLLOW
                                 }
+                                root.revealMonitorName = edgeTriggerWindow.modelData ? String(edgeTriggerWindow.modelData.name || "") : ""
                                 root.isDockHovered = true
                                 autohideLeaveTimer.restart()
                             }
