@@ -9,6 +9,11 @@ var VISIBILITY_OVERRIDE_HIDDEN = -1
 var VISIBILITY_OVERRIDE_FOLLOW = 0
 var VISIBILITY_OVERRIDE_SHOWN = 1
 
+var DEFAULT_ICON_SIZE = 24
+var MIN_ICON_SIZE = 16
+var MAX_ICON_SIZE = 64
+var ICON_TO_SLOT_RATIO = 1.75
+
 function normalizeVisibilityMode(value, legacyAutohide) {
     var mode = String(value === undefined || value === null ? "" : value).trim().toLowerCase()
     if (mode === VISIBILITY_ALWAYS || mode === VISIBILITY_HOVER || mode === VISIBILITY_KEYBIND || mode === VISIBILITY_HYBRID) {
@@ -40,12 +45,25 @@ function normalizeVisibleWorkspace(value) {
     return workspace === "" || workspace.toLowerCase() === "all" ? "all" : workspace
 }
 
+function normalizeIconSize(value) {
+    var size = parseInt(value, 10)
+    if (isNaN(size)) return DEFAULT_ICON_SIZE
+    if (size < MIN_ICON_SIZE) return MIN_ICON_SIZE
+    if (size > MAX_ICON_SIZE) return MAX_ICON_SIZE
+    return size
+}
+
+function slotSizeForIconSize(iconSize) {
+    return Math.round(normalizeIconSize(iconSize) * ICON_TO_SLOT_RATIO)
+}
+
 function normalize(raw) {
     var settings = raw && typeof raw === "object" ? raw : {}
     return {
         visibilityMode: normalizeVisibilityMode(settings.visibilityMode, settings.autohide),
         overlayMode: normalizeOverlayMode(settings.overlayMode, settings.spaceMode),
-        visibleWorkspace: normalizeVisibleWorkspace(settings.visibleWorkspace)
+        visibleWorkspace: normalizeVisibleWorkspace(settings.visibleWorkspace),
+        iconSize: normalizeIconSize(settings.iconSize)
     }
 }
 

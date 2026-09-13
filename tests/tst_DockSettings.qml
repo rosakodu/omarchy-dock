@@ -10,6 +10,7 @@ TestCase {
         compare(settings.visibilityMode, "always")
         compare(settings.overlayMode, false)
         compare(settings.visibleWorkspace, "all")
+        compare(settings.iconSize, 24)
     }
 
     function test_legacyAutohideMigration_data() {
@@ -239,5 +240,31 @@ TestCase {
 
         compare(decision.action, "workspace-unavailable")
         compare(decision.targetWorkspace, "")
+    }
+
+    function test_normalizeIconSize_data() {
+        return [
+            { tag: "default-undefined", input: undefined, expected: 24 },
+            { tag: "default-null", input: null, expected: 24 },
+            { tag: "clamp-low", input: 4, expected: 16 },
+            { tag: "clamp-high", input: 128, expected: 64 },
+            { tag: "string-numeric", input: "36", expected: 36 },
+            { tag: "garbage", input: "not-a-number", expected: 24 }
+        ]
+    }
+
+    function test_normalizeIconSize(data) {
+        compare(DockSettings.normalizeIconSize(data.input), data.expected)
+    }
+
+    function test_slotSizeForIconSize_data() {
+        return [
+            { tag: "default", input: 24, expected: 42 },
+            { tag: "one-and-a-half", input: 36, expected: 63 }
+        ]
+    }
+
+    function test_slotSizeForIconSize(data) {
+        compare(DockSettings.slotSizeForIconSize(data.input), data.expected)
     }
 }

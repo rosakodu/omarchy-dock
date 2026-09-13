@@ -6,6 +6,7 @@ import Quickshell.Hyprland
 import qs.Commons
 import qs.Ui
 import "DockModel.js" as DockModel
+import "DockSettings.js" as DockSettings
 import "components"
 
 Item {
@@ -235,7 +236,7 @@ Item {
             height: root.iconBaseSize
             text: (root.itemData && root.itemData.icon) ? root.itemData.icon : ""
             fontFamily: Style.font.family
-            fontSize: 20
+            fontSize: Math.round(20 * root.iconBaseSize / DockSettings.DEFAULT_ICON_SIZE)
             color: Color.accent
         }
 

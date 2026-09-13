@@ -59,8 +59,9 @@ Item {
     }
 
     // Static Standard Dock Geometry (Strictly stable, no jumping/twitching on window state)
-    readonly property real slotSize: 42
-    readonly property real iconBaseSize: 24
+    property int iconSize: DockSettings.DEFAULT_ICON_SIZE
+    readonly property real iconBaseSize: root.iconSize
+    readonly property real slotSize: DockSettings.slotSizeForIconSize(root.iconSize)
 
     // Live 1D Rail Displacement for Main Dock Bar
     property int dockDragActiveIndex: -1
@@ -120,6 +121,7 @@ Item {
         function setShowFolderTitles(val: string): string { root.showFolderTitles = (val === "true" || val === "1"); root.saveSettings(); return "ok" }
         function setShowBadges(val: string): string { root.showBadges = (val === "true" || val === "1"); root.saveSettings(); return "ok" }
         function setOverlayMode(val: string): string { root.overlayMode = (val === "true" || val === "1"); root.saveSettings(); return "ok" }
+        function setIconSize(val: string): string { root.setIconSize(val); return "ok" }
         function ping(): string { return "ok" }
     }
 
@@ -897,6 +899,7 @@ Item {
                 }
                 root.overlayMode = normalized.overlayMode
                 root.visibleWorkspace = normalized.visibleWorkspace
+                root.iconSize = normalized.iconSize
                 if (s.dockEnabled !== undefined) {
                     root.dockEnabled = (s.dockEnabled === true || s.dockEnabled === "true" || s.dockEnabled === 1 || s.dockEnabled === "1")
                 } else {
@@ -970,6 +973,7 @@ Item {
             autohide: DockSettings.legacyAutohide(root.visibilityMode),
             overlayMode: root.overlayMode,
             visibleWorkspace: root.visibleWorkspace,
+            iconSize: root.iconSize,
             autohideEdgeDepth: root.autohideEdgeDepth,
             showFolderTitles: root.showFolderTitles,
             showBadges: root.showBadges,
@@ -1015,6 +1019,11 @@ Item {
 
     function setVisibleWorkspace(workspace) {
         root.visibleWorkspace = DockSettings.normalizeVisibleWorkspace(workspace)
+        saveSettings()
+    }
+
+    function setIconSize(val) {
+        root.iconSize = DockSettings.normalizeIconSize(val)
         saveSettings()
     }
 
@@ -2773,7 +2782,7 @@ Item {
                                     return root.getWidgetIcon(modelData, it)
                                 }
                                 fontFamily: (leftWidgetLoader.item && leftWidgetLoader.item.fontFamily) ? leftWidgetLoader.item.fontFamily : ((leftWidgetLoader.item && leftWidgetLoader.item.font && leftWidgetLoader.item.font.family) ? leftWidgetLoader.item.font.family : Style.font.family)
-                                fontSize: 22
+                                fontSize: Math.round(22 * root.iconBaseSize / DockSettings.DEFAULT_ICON_SIZE)
                                 color: leftWidgetSlotMouse.containsMouse ? Color.accent : Color.composed("popups.text", "popups.text-alpha", Color.text, 0.95)
                                 Behavior on color { ColorAnimation { duration: 120 } }
                             }
@@ -3121,7 +3130,7 @@ Item {
                                     return root.getWidgetIcon(modelData, it)
                                 }
                                 fontFamily: (rightWidgetLoader.item && rightWidgetLoader.item.fontFamily) ? rightWidgetLoader.item.fontFamily : ((rightWidgetLoader.item && rightWidgetLoader.item.font && rightWidgetLoader.item.font.family) ? rightWidgetLoader.item.font.family : Style.font.family)
-                                fontSize: 22
+                                fontSize: Math.round(22 * root.iconBaseSize / DockSettings.DEFAULT_ICON_SIZE)
                                 color: rightWidgetSlotMouse.containsMouse ? Color.accent : Color.composed("popups.text", "popups.text-alpha", Color.text, 0.95)
                                 Behavior on color { ColorAnimation { duration: 120 } }
                             }
