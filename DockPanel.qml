@@ -62,6 +62,9 @@ Item {
     property int iconSize: DockSettings.DEFAULT_ICON_SIZE
     readonly property real iconBaseSize: root.iconSize
     readonly property real slotSize: DockSettings.slotSizeForIconSize(root.iconSize)
+    // Distance the card travels when autohidden: the whole layer window plus its
+    // screen-edge gap, so no strip of the dock stays visible at any icon size.
+    readonly property real slideOutDistance: root.slotSize + 8 + (Style.gapsOut || 5)
 
     // Live 1D Rail Displacement for Main Dock Bar
     property int dockDragActiveIndex: -1
@@ -2678,14 +2681,14 @@ Item {
                 id: autohideTranslate
                 x: {
                     if (!root.shouldSlideOut) return 0
-                    if (root.barPosition === "right") return -56
-                    if (root.barPosition === "left") return 56
+                    if (root.barPosition === "right") return -root.slideOutDistance
+                    if (root.barPosition === "left") return root.slideOutDistance
                     return 0
                 }
                 y: {
                     if (!root.shouldSlideOut) return 0
-                    if (root.barPosition === "top") return 56
-                    if (root.barPosition === "bottom") return -56
+                    if (root.barPosition === "top") return root.slideOutDistance
+                    if (root.barPosition === "bottom") return -root.slideOutDistance
                     return 0
                 }
                 Behavior on x { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
