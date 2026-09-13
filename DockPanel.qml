@@ -120,6 +120,7 @@ Item {
         function setShowFolderTitles(val: string): string { root.showFolderTitles = (val === "true" || val === "1"); root.saveSettings(); return "ok" }
         function setShowBadges(val: string): string { root.showBadges = (val === "true" || val === "1"); root.saveSettings(); return "ok" }
         function setOverlayMode(val: string): string { root.overlayMode = (val === "true" || val === "1"); root.saveSettings(); return "ok" }
+        function setShowOnEmptyWorkspace(val: string): string { root.setShowOnEmptyWorkspace(val === "true" || val === "1"); return "ok" }
         function ping(): string { return "ok" }
     }
 
@@ -361,6 +362,7 @@ Item {
     property int autohideEdgeDepth: 1  // pixels from screen edge that trigger dock reveal
     readonly property int effectiveAutohideEdgeDepth: Math.max(4, Math.min(64, root.autohideEdgeDepth))
     property bool showFolderTitles: true
+    property bool showOnEmptyWorkspace: true
     property bool showBadges: true
     property bool glassmorphism: false
     property real blurOpacity: 0.68
@@ -664,7 +666,7 @@ Item {
         root.visibilityMode,
         root.visibilityOverride,
         root.isDockActive,
-        root.isWorkspaceEmpty
+        root.showOnEmptyWorkspace && root.isWorkspaceEmpty
     )
 
     function closeDockPopups() {
@@ -907,6 +909,7 @@ Item {
                     if (!isNaN(depth) && depth >= 1 && depth <= 64) root.autohideEdgeDepth = depth
                 }
                 root.showFolderTitles = true
+                root.showOnEmptyWorkspace = normalized.showOnEmptyWorkspace
                 if (s.showBadges !== undefined) {
                     root.showBadges = (s.showBadges === true)
                 }
@@ -972,6 +975,7 @@ Item {
             visibleWorkspace: root.visibleWorkspace,
             autohideEdgeDepth: root.autohideEdgeDepth,
             showFolderTitles: root.showFolderTitles,
+            showOnEmptyWorkspace: root.showOnEmptyWorkspace,
             showBadges: root.showBadges,
             glassmorphism: root.glassmorphism,
             blurOpacity: root.blurOpacity,
@@ -986,6 +990,11 @@ Item {
 
     function setDockEnabled(val) {
         root.dockEnabled = (val === true || val === "true" || val === 1 || val === "1")
+        saveSettings()
+    }
+
+    function setShowOnEmptyWorkspace(val) {
+        root.showOnEmptyWorkspace = (val === true || val === "true" || val === 1 || val === "1")
         saveSettings()
     }
 

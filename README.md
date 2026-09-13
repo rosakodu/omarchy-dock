@@ -69,6 +69,7 @@ You can customize options directly via the `···` status bar widget or in `~/.
   "overlayMode": false,
   "visibleWorkspace": "all",
   "showFolderTitles": true,
+  "showOnEmptyWorkspace": true,
   "showBadges": true,
   "widgetsEnabled": true,
   "widgetPosition": "left",
@@ -86,6 +87,10 @@ workspace name. With `all`, a keyboard opening targets the workspace and
 monitor containing the focused window and keeps that target until the dock is
 closed. With an explicit selector, the dock always targets that workspace and
 can open only while the workspace is active on a monitor.
+`showOnEmptyWorkspace` (default `true`) applies in `hover` and `hybrid` modes:
+the dock stays revealed while the active workspace has no windows, regardless
+of pointer position. Set it to `false` to keep the dock hidden until the
+pointer reaches the screen edge, even on an empty workspace.
 
 ### Keyboard toggle
 
