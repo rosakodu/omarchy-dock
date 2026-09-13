@@ -20,6 +20,7 @@ BarWidget {
   property bool overlayMode: false
   property string visibleWorkspace: "all"
   property bool showFolderTitles: true
+  property bool showOnEmptyWorkspace: true
   property bool showBadges: true
   property bool widgetsEnabled: true
   readonly property bool settingsOpen: settingsWindow.open
@@ -80,6 +81,7 @@ BarWidget {
         if (s && s.showFolderTitles !== undefined) {
           root.showFolderTitles = (s.showFolderTitles === true)
         }
+        root.showOnEmptyWorkspace = normalized.showOnEmptyWorkspace
         if (s && s.showBadges !== undefined) {
           root.showBadges = (s.showBadges === true)
         }
@@ -120,6 +122,7 @@ BarWidget {
     s.overlayMode = root.overlayMode
     s.visibleWorkspace = root.visibleWorkspace
     s.showFolderTitles = root.showFolderTitles
+    s.showOnEmptyWorkspace = root.showOnEmptyWorkspace
     s.showBadges = root.showBadges
     s.widgetsEnabled = root.widgetsEnabled
     s.appMenuPosition = root.appMenuPosition || s.appMenuPosition || "left"
@@ -249,6 +252,14 @@ BarWidget {
     saveSettings()
     if (root.bar && typeof root.bar.run === "function") {
       root.bar.run("omarchy-shell rosakodu.dock setShowFolderTitles " + (val ? "true" : "false"))
+    }
+  }
+
+  function setShowOnEmptyWorkspace(val) {
+    root.showOnEmptyWorkspace = val
+    saveSettings()
+    if (root.bar && typeof root.bar.run === "function") {
+      root.bar.run("omarchy-shell rosakodu.dock setShowOnEmptyWorkspace " + (val ? "true" : "false"))
     }
   }
 
@@ -510,7 +521,92 @@ BarWidget {
           }
         }
 
-        // 4. Keyboard shortcut toggle
+        // 4. Show on empty workspace toggle (collapses unless autohide-on-hover is active)
+        Rectangle {
+          id: showOnEmptyWorkspaceRow
+          Layout.fillWidth: true
+          Layout.preferredHeight: (root.dockEnabled && (root.visibilityMode === "hover" || root.visibilityMode === "hybrid")) ? 42 : 0
+          Layout.minimumHeight: 0
+          clip: true
+          visible: Layout.preferredHeight > 0
+          radius: 8
+          color: toggleEmptyWorkspaceMouse.containsMouse ? Style.hoverFillFor(Color.popups.text, Color.accent) : "transparent"
+          Behavior on color { ColorAnimation { duration: 120 } }
+          Behavior on Layout.preferredHeight { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+
+          readonly property bool active: root.showOnEmptyWorkspace
+
+          RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 10
+            anchors.rightMargin: 10
+            spacing: 8
+
+            ColumnLayout {
+              Layout.fillWidth: true
+              Layout.alignment: Qt.AlignVCenter
+              spacing: 1
+
+              Text {
+                Layout.fillWidth: true
+                text: "Show on empty workspace"
+                textFormat: Text.PlainText
+                font.family: Style.font.family
+                font.pixelSize: 12
+                font.bold: true
+                color: Color.popups.text
+                elide: Text.ElideRight
+              }
+
+              Text {
+                Layout.fillWidth: true
+                text: "Keep the dock visible when the workspace has no windows"
+                textFormat: Text.PlainText
+                font.family: Style.font.family
+                font.pixelSize: 10
+                color: Color.muted
+                elide: Text.ElideRight
+              }
+            }
+
+            Rectangle {
+              id: switchEmptyWorkspaceTrack
+              Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
+              Layout.preferredWidth: 36
+              Layout.minimumWidth: 36
+              Layout.maximumWidth: 36
+              Layout.preferredHeight: 20
+              width: 36
+              height: 20
+              radius: 10
+              color: showOnEmptyWorkspaceRow.active ? Color.accent : Qt.rgba(Color.popups.text.r, Color.popups.text.g, Color.popups.text.b, 0.25)
+              Behavior on color { ColorAnimation { duration: 180 } }
+
+              Rectangle {
+                id: switchEmptyWorkspaceThumb
+                width: 14
+                height: 14
+                radius: 7
+                anchors.verticalCenter: parent.verticalCenter
+                x: showOnEmptyWorkspaceRow.active ? (switchEmptyWorkspaceTrack.width - width - 3) : 3
+                color: showOnEmptyWorkspaceRow.active ? Color.background : Color.popups.text
+                Behavior on x { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+              }
+            }
+          }
+
+          MouseArea {
+            id: toggleEmptyWorkspaceMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+              root.setShowOnEmptyWorkspace(!showOnEmptyWorkspaceRow.active)
+            }
+          }
+        }
+
+        // 5. Keyboard shortcut toggle
         Rectangle {
           id: keybindRow
           Layout.fillWidth: true
@@ -591,7 +687,7 @@ BarWidget {
           }
         }
 
-        // 5. Shortcut Hint (smoothly appears ONLY when Keyboard shortcut is active)
+        // 6. Shortcut Hint (smoothly appears ONLY when Keyboard shortcut is active)
         ColumnLayout {
           id: shortcutHintCard
           Layout.fillWidth: true
