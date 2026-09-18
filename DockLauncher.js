@@ -64,12 +64,21 @@ function stripDesktop(id) {
     return value;
 }
 
+// A ".desktop" tail can belong to the application's own name: Quickshell reports
+// the entry file "org.telegram.desktop.desktop" under the id "org.telegram.desktop",
+// and AppLibrary.launch appends the file suffix itself.
+function launchId(id) {
+    var value = String(id == null ? "" : id).trim();
+    if (value.slice(-4).toLowerCase() === ".exe") value = value.slice(0, -4);
+    return value;
+}
+
 function launchApp(shell, itemData, util) {
     if (!itemData) return;
     var rawLaunchId = itemData.desktopId || itemData.appId || "";
     var appName = itemData.name || "";
-    var canonicalId = stripDesktop(rawLaunchId);
-    var cleanId = canonicalId.toLowerCase();
+    var canonicalId = launchId(rawLaunchId);
+    var cleanId = stripDesktop(rawLaunchId).toLowerCase();
 
     // Fast-path for cliamp & popular CLI utilities: sets dedicated Wayland app-id on foot
     var cliFastApps = ["cliamp", "org.omarchy.cliamp", "yazi", "btop", "nvim", "helix", "micro", "lazygit", "fastfetch"];
@@ -80,7 +89,7 @@ function launchApp(shell, itemData, util) {
     }
 
     // 1. Primary: Use Omarchy's official shell.appLibrary launcher
-    // Note: Omarchy's AppLibrary.launch appends ".desktop" automatically, so pass canonicalId without extension
+    // Note: Omarchy's AppLibrary.launch appends ".desktop" automatically, so pass the entry id
     if (shell && shell.appLibrary && typeof shell.appLibrary.launch === "function") {
         var libId = canonicalId || cleanId;
         shell.appLibrary.launch(libId, appName);

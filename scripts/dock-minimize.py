@@ -212,7 +212,11 @@ def find_desktop_file(desktop_id):
         return ""
     if "/" in desktop_id or "\x00" in desktop_id:
         return ""
-    clean = desktop_id if desktop_id.endswith(".desktop") else (desktop_id + ".desktop")
+    # A ".desktop" tail can belong to the application's own name: the entry id
+    # org.telegram.desktop names the file org.telegram.desktop.desktop.
+    names = [desktop_id + ".desktop"]
+    if desktop_id.endswith(".desktop"):
+        names.append(desktop_id)
     search_dirs = [
         os.path.expanduser("~/.local/share/applications"),
         "/usr/share/applications",
@@ -228,9 +232,9 @@ def find_desktop_file(desktop_id):
                 search_dirs.append(app_d)
 
     for base in search_dirs:
-        candidate = os.path.join(base, clean)
-        if os.path.isfile(candidate):
-            return clean
+        for name in names:
+            if os.path.isfile(os.path.join(base, name)):
+                return name
     return ""
 
 def split_queries(queries):
