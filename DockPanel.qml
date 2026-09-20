@@ -1376,7 +1376,7 @@ Item {
     }
 
     Connections {
-        target: root.pluginRegistry ? root.pluginRegistry : (shell ? shell.pluginRegistry : null)
+        target: root.pluginRegistry || (shell && shell.pluginRegistry) || null
         ignoreUnknownSignals: true
         function onPluginsChanged() { root.updatePluginEnabled() }
     }
@@ -1919,6 +1919,8 @@ Item {
 
     Connections {
         target: root.shell ? root.shell : null
+        // Omarchy's scoped plugin shell (third-party installs) has no openPanelIds
+        ignoreUnknownSignals: true
         function onOpenPanelIdsChanged() {
             if (root.shell && root.shell.openPanelIds) {
                 if (root.shell.openPanelIds["omarchy.osd"] || root.shell.openPanelIds["omarchy.notifications"]) {
