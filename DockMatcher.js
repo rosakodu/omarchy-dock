@@ -808,7 +808,10 @@ function extractCliApp(title, desktopEntries) {
         }
     }
 
-    // Dynamic scanning: check if any token in title matches an installed desktop entry
+    // Dynamic scanning: check if any token in title matches an installed desktop entry.
+    // Match only on the entry's id or exec binary, never on its display Name: a title
+    // word that equals a GUI app's Name (e.g. "Claude" while Claude Code runs in a
+    // terminal) does not mean that app is what is running in the terminal.
     if (desktopEntries) {
         var list = toArray(desktopEntries);
         var scanLimit = Math.min(tokens.length, 3);
@@ -820,8 +823,7 @@ function extractCliApp(title, desktopEntries) {
                 if (!de) continue;
                 var deId = stripDesktop(de.id || "").toLowerCase();
                 var deExec = String(de.exec || "").toLowerCase().split(/\s+/)[0].split("/").pop();
-                var deName = String(de.name || "").toLowerCase();
-                if ((token === deId || token === deExec || token === deName) && !isTerminalApp(deId, de)) {
+                if ((token === deId || token === deExec) && !isTerminalApp(deId, de)) {
                     return deId || token;
                 }
             }
