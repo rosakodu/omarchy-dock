@@ -461,7 +461,7 @@ function normalizeKey(str) {
 function extractChromeDomain(appClass) {
     if (!appClass) return "";
     var s = String(appClass).toLowerCase();
-    if (s === "brave-browser" || s === "chromium-browser" || s === "chrome-browser" || s === "yandex-browser" || s === "yandex-browser-stable") {
+    if (s === "brave-browser" || s === "brave-origin" || s === "chromium-browser" || s === "chrome-browser" || s === "yandex-browser" || s === "yandex-browser-stable") {
         return "";
     }
     if (s.indexOf("chrome-") === 0 || s.indexOf("chromium-") === 0 || s.indexOf("brave-") === 0 || s.indexOf("edge-") === 0) {
@@ -723,7 +723,7 @@ function resolveIcon(entry, appId, appLibrary) {
 
 function isBrowserApp(id) {
     var s = String(id || "").toLowerCase();
-    return s === "google-chrome" || s === "google-chrome-stable" || s === "chromium" || s === "brave" || s === "brave-browser" || s === "microsoft-edge" || s === "opera" || s === "vivaldi" || s === "yandex-browser" || s === "yandex-browser-stable" || s === "ru.yandex.desktop.browser";
+    return s === "google-chrome" || s === "google-chrome-stable" || s === "chromium" || s === "brave" || s === "brave-browser" || s === "brave-origin" || s === "microsoft-edge" || s === "opera" || s === "vivaldi" || s === "yandex-browser" || s === "yandex-browser-stable" || s === "ru.yandex.desktop.browser";
 }
 
 var KNOWN_TERMINALS = [
