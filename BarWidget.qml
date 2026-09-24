@@ -290,13 +290,16 @@ BarWidget {
     }
   }
 
-  // Standard Omarchy KeyboardPanel (Exact same screen level, gap, and animation as Weather & Audio)
+  // Standard Omarchy KeyboardPanel (Exact same screen level, gap, and animation as Weather & Audio),
+  // anchored under this widget's own button rather than centered on the bar.
   KeyboardPanel {
     id: settingsWindow
     anchorItem: button
     owner: root
     bar: root.bar
-    centerOnBar: true
+    // Anchor to the widget itself (left/center/right section) instead of the bar's
+    // midpoint; KeyboardPanel still clamps the card on-screen via its margin.
+    centerOnBar: false
     contentWidth: (Style && typeof Style.space === "function") ? Style.space(410) : 410
     contentHeight: settingsWindow.fittedContentHeight(cardColumn.implicitHeight + 6)
     borderSpec: Border.localOrSurfaceSpec("popups", "border", Color.accent, Color.accent, Math.max(1, Style.space(2)))
