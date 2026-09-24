@@ -20,6 +20,12 @@ Item {
     property var shell: null
     property var manifest: null
     property var pluginRegistry: null
+    // Omarchy 4.0.3 scopes pluginRegistry to this plugin's own manifest, so
+    // getWidgetSource() can no longer resolve another plugin's entry point.
+    // Declaring this makes the host inject the widget-catalogue facade, whose
+    // snapshot still carries every registered widget's Component.
+    property var barWidgetRegistry: null
+    readonly property int widgetRegistryRevision: barWidgetRegistry ? barWidgetRegistry.revision : 0
 
     // Dock state & Multi-source Live Bar Position Tracking
     property bool opened: true
@@ -1104,6 +1110,18 @@ Item {
             root.widgetSavedPositions = currentSaved
         }
         saveSettings()
+    }
+
+    // Preferred route since Omarchy 4.0.3: the widget-catalogue facade hands out
+    // the live Component for anything the host has registered, which is every
+    // enabled bar-widget plugin. Returns null when the widget is not registered,
+    // leaving getWidgetSource() to cover the hardcoded first-party panels.
+    function getWidgetComponent(widgetId) {
+        if (!widgetId || widgetId === "omarchy.apps") return null
+        if (!root.barWidgetRegistry) return null
+        var widgets = root.barWidgetRegistry.widgets || {}
+        var entry = widgets[widgetId]
+        return entry && entry.component ? entry.component : null
     }
 
     function getWidgetSource(widgetId) {
@@ -2936,7 +2954,29 @@ Item {
                                 id: leftWidgetLoader
                                 anchors.fill: parent
                                 opacity: 0.0
-                                source: root.getWidgetSource(modelData)
+                                // source and sourceComponent clear one another, so pick one
+                                // imperatively instead of binding both. This runs on every
+                                // registry revision (dozens during shell start-up); re-assigning
+                                // an unchanged source would still tear the item down, so it
+                                // returns early when nothing changed.
+                                function applyWidgetSource() {
+                                    var comp = root.getWidgetComponent(modelData)
+                                    if (comp) {
+                                        if (sourceComponent === comp) return
+                                        source = ""
+                                        sourceComponent = comp
+                                        return
+                                    }
+                                    var url = root.getWidgetSource(modelData)
+                                    if (url !== "" && String(source) === url) return
+                                    sourceComponent = null
+                                    source = url
+                                }
+                                Component.onCompleted: applyWidgetSource()
+                                Connections {
+                                    target: root
+                                    function onWidgetRegistryRevisionChanged() { leftWidgetLoader.applyWidgetSource() }
+                                }
                                 onLoaded: {
                                     if (item) {
                                         root.configureHostedWidget(item, modelData, leftWidgetSlotRoot)
@@ -3226,7 +3266,29 @@ Item {
                                 id: rightWidgetLoader
                                 anchors.fill: parent
                                 opacity: 0.0
-                                source: root.getWidgetSource(modelData)
+                                // source and sourceComponent clear one another, so pick one
+                                // imperatively instead of binding both. This runs on every
+                                // registry revision (dozens during shell start-up); re-assigning
+                                // an unchanged source would still tear the item down, so it
+                                // returns early when nothing changed.
+                                function applyWidgetSource() {
+                                    var comp = root.getWidgetComponent(modelData)
+                                    if (comp) {
+                                        if (sourceComponent === comp) return
+                                        source = ""
+                                        sourceComponent = comp
+                                        return
+                                    }
+                                    var url = root.getWidgetSource(modelData)
+                                    if (url !== "" && String(source) === url) return
+                                    sourceComponent = null
+                                    source = url
+                                }
+                                Component.onCompleted: applyWidgetSource()
+                                Connections {
+                                    target: root
+                                    function onWidgetRegistryRevisionChanged() { rightWidgetLoader.applyWidgetSource() }
+                                }
                                 onLoaded: {
                                     if (item) {
                                         root.configureHostedWidget(item, modelData, rightWidgetSlotRoot)
