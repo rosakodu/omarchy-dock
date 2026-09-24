@@ -348,6 +348,31 @@ TestCase {
         compare(DockMatcher.matchToplevel(top, "claude-desktop", claudeEntry, entries), true)
     }
 
+    function test_extractCliApp_ignoresDesktopEntryName() {
+        var entries = [
+            { id: "com.anthropic.Claude.desktop", name: "Claude", exec: "claude-desktop %U", icon: "claude-desktop" },
+            { id: "foot.desktop", name: "foot", exec: "foot", categories: ["TerminalEmulator"] }
+        ]
+
+        // Claude Code running in a terminal sets titles like these. The token "claude"
+        // equals the Claude Desktop entry's Name, but that must not identify the window.
+        compare(DockMatcher.extractCliApp("\u2733 Claude Code", entries), "")
+        compare(DockMatcher.extractCliApp("claude", entries), "")
+        compare(DockMatcher.extractCliApp("\u25d0 Dock icon display issue", entries), "")
+
+        // A terminal running Claude Code must stay a terminal, not become Claude Desktop
+        var top = { appId: "foot", title: "\u2733 Claude Code" }
+        var items = DockMatcher.buildDockItems([], [top], top, entries, null, {}, {}, 0, [])
+        compare(items.length, 1)
+        compare(items[0].appId, "foot")
+
+        // Matching on exec binary or entry id still works
+        var btopEntries = [{ id: "btop.desktop", name: "System Monitor", exec: "btop", icon: "btop" }]
+        compare(DockMatcher.extractCliApp("btop", btopEntries), "btop")
+        var idEntries = [{ id: "lazyapp.desktop", name: "Lazy App", exec: "/opt/lazy/run", icon: "lazyapp" }]
+        compare(DockMatcher.extractCliApp("lazyapp - session", idEntries), "lazyapp")
+    }
+
     function test_getCandidates_caseAndVariants() {
         var cands1 = DockMatcher.getCandidates("SyncTERM", "", "SyncTERM")
         verify(cands1.indexOf("syncterm") !== -1)
