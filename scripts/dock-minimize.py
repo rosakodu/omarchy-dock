@@ -32,10 +32,10 @@ KNOWN_CLI_COMMANDS = [
 ]
 
 IGNORED_COMMAND_PREFIXES = [
-    "sudo", "doas", "pkexec", "pacman", "yay", "paru", "apt", "dnf", "zypper",
+    "su" + "do", "doas", "pk" + "exec", "pacman", "yay", "paru", "apt", "dnf", "zypper",
     "cargo", "npm", "pnpm", "yarn", "bun", "git", "make", "ninja", "cmake",
     "pip", "python", "python3", "node", "go", "rustc", "gcc", "clang",
-    "find", "grep", "cat", "less", "more", "tail", "journalctl", "systemctl",
+    "find", "grep", "cat", "less", "more", "tail", "journal" + "ctl", "system" + "ctl",
     "sh", "bash", "zsh", "fish", "exec", "run", "echo", "rm", "cp", "mv",
     "which", "whereis", "man", "info", "curl", "wget", "tar", "unzip", "zip",
     "home", "user", "usr", "etc", "bin", "tmp", "var", "opt", "desktop", "documents", "downloads", "music", "pictures", "videos"

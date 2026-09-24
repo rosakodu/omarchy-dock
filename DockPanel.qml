@@ -1115,9 +1115,32 @@ Item {
         }
         var parts = widgetId.split(".")
         var name = parts.length > 1 ? parts[1] : parts[0]
-        if (name === "audio" || name === "bluetooth" || name === "network" || name === "power" || name === "monitor" || name === "tailscale") {
+
+        // 1. Built-in bar widgets in plugins/bar/widgets/
+        if (name === "indicators") return "file:///usr/share/omarchy/shell/plugins/bar/widgets/Indicators.qml"
+        if (name === "keyboard-layout") return "file:///usr/share/omarchy/shell/plugins/bar/widgets/KeyboardLayout.qml"
+        if (name === "microphone") return "file:///usr/share/omarchy/shell/plugins/bar/widgets/Microphone.qml"
+
+        // 2. Services bar widgets
+        if (name === "media") return "file:///usr/share/omarchy/shell/plugins/services/media/BarWidget.qml"
+
+        // 3. Root plugin bar widgets / panels
+        if (name === "agents") return "file:///usr/share/omarchy/shell/plugins/agents/Panel.qml"
+        if (name === "menu") return "file:///usr/share/omarchy/shell/plugins/menu/BarWidget.qml"
+
+        // 4. Panel widgets using Panel.qml
+        if (name === "audio" || name === "bluetooth" || name === "network" ||
+            name === "power" || name === "monitor" || name === "tailscale" ||
+            name === "dropbox" || name === "speedtest" || name === "disk-speedtest" ||
+            name === "wifiqr") {
             return "file:///usr/share/omarchy/shell/plugins/panels/" + name + "/Panel.qml"
         }
+
+        // 5. Panel widgets using BarWidget.qml
+        if (name === "clock" || name === "weather") {
+            return "file:///usr/share/omarchy/shell/plugins/panels/" + name + "/BarWidget.qml"
+        }
+
         if (manifest && (!manifest.entryPoints || !manifest.entryPoints.barWidget)) {
             return ""
         }
@@ -1360,13 +1383,13 @@ Item {
 
     function handleWidgetSlotClick(widgetId, mouse) {
         if (root.isEditMode) {
-            if (mouse.button === Qt.RightButton) {
+            if (mouse && mouse.button === Qt.RightButton) {
                 root.isEditMode = false
             }
             return
         }
         if (widgetId === "omarchy.apps") {
-            if (mouse.button === Qt.RightButton) {
+            if (mouse && mouse.button === Qt.RightButton) {
                 Util.execDetached("omarchy-menu toggle root")
             } else {
                 Util.execDetached("omarchy-menu toggle apps")
@@ -1374,32 +1397,118 @@ Item {
             return
         }
         if (widgetId === "omarchy.clock") {
-            if (mouse.button === Qt.MiddleButton) {
+            if (mouse && mouse.button === Qt.MiddleButton) {
                 Util.execDetached("omarchy-menu-timezone")
                 return
             }
         }
         if (widgetId === "omarchy.microphone") {
-            if (mouse.button === Qt.MiddleButton) {
-                if (root.shell && typeof root.shell.toggle === "function") {
-                    root.shell.toggle("omarchy.audio")
+            if (mouse && mouse.button === Qt.MiddleButton) {
+                Util.execDetached("omarchy-shell shell toggle omarchy.audio")
+                return
+            }
+            if (mouse && mouse.button === Qt.LeftButton) {
+                if (root.pipewireDefaultSourceAudio) {
+                    root.pipewireDefaultSourceAudio.muted = !root.pipewireDefaultSourceAudio.muted
                 } else {
-                    Util.execDetached("omarchy-shell shell toggle omarchy.audio")
+                    Util.execDetached("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle")
                 }
                 return
             }
+        }
+        if (widgetId === "omarchy.keyboard-layout") {
+            Util.execDetached("hyprctl switchxkblayout all next")
+            return
         }
         if (widgetId === "omarchy.system-update") {
             Util.execDetached("omarchy-launch-floating-terminal-with-presentation omarchy-update")
             return
         }
-        if (root.shell && typeof root.shell.toggle === "function") {
-            root.shell.toggle(widgetId)
-        } else if (root.shell && typeof root.shell.togglePlugin === "function") {
-            root.shell.togglePlugin(widgetId)
-        } else {
-            Util.execDetached("omarchy-shell shell toggle " + widgetId)
+
+        // Reliable toggle for all other plugins and overlays:
+        Util.execDetached("omarchy-shell shell toggle " + widgetId)
+    }
+
+    function activateWidget(widgetId, target, slotRoot, mouse) {
+        if (root.isEditMode) {
+            if (mouse && mouse.button === Qt.RightButton) {
+                root.isEditMode = false
+            }
+            return
         }
+        if (widgetId === "omarchy.apps") {
+            if (mouse && mouse.button === Qt.RightButton) {
+                Util.execDetached("omarchy-menu toggle root")
+            } else {
+                Util.execDetached("omarchy-menu toggle apps")
+            }
+            return
+        }
+        if (widgetId === "omarchy.system-update") {
+            Util.execDetached("omarchy-launch-floating-terminal-with-presentation omarchy-update")
+            return
+        }
+
+        if (target) {
+            root.configureHostedWidget(target, widgetId, slotRoot)
+            if (mouse && mouse.button === Qt.RightButton) {
+                if (typeof target.cycleFormat === "function") {
+                    target.cycleFormat()
+                    return
+                } else if (typeof target.toggleAllMuted === "function") {
+                    target.toggleAllMuted()
+                    return
+                } else if (typeof target.toggleBluetooth === "function") {
+                    target.toggleBluetooth()
+                    return
+                }
+            } else if (mouse && mouse.button === Qt.MiddleButton) {
+                if (widgetId === "omarchy.microphone") {
+                    Util.execDetached("omarchy-shell shell toggle omarchy.audio")
+                    return
+                } else if (target.bar && typeof target.bar.run === "function") {
+                    target.bar.run("omarchy-menu-timezone")
+                    return
+                } else {
+                    Util.execDetached("omarchy-menu-timezone")
+                    return
+                }
+            } else {
+                // Left click handling
+                if (typeof target.cycleLayout === "function") {
+                    target.cycleLayout()
+                    return
+                } else if (typeof target.runUpdate === "function") {
+                    target.runUpdate()
+                    return
+                } else if (typeof target.toggleMute === "function") {
+                    target.toggleMute()
+                    return
+                } else if (typeof target.togglePanel === "function") {
+                    target.togglePanel()
+                    return
+                } else if (typeof target.toggle === "function") {
+                    target.toggle()
+                    return
+                } else if (target.panel && typeof target.panel.toggle === "function") {
+                    target.panel.toggle()
+                    return
+                } else if (typeof target.open === "function") {
+                    if (target.opened) target.close()
+                    else target.open()
+                    return
+                } else if (target.panel && typeof target.panel.open === "function") {
+                    if (target.panel.opened) target.panel.close()
+                    else target.panel.open()
+                    return
+                } else if ("opened" in target) {
+                    target.opened = !target.opened
+                    return
+                }
+            }
+        }
+
+        root.handleWidgetSlotClick(widgetId, mouse)
     }
 
     Connections {
@@ -2851,65 +2960,7 @@ Item {
                             acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
                             cursorShape: root.isEditMode ? Qt.ArrowCursor : Qt.PointingHandCursor
                             onClicked: function(mouse) {
-                                if (root.isEditMode) {
-                                    if (mouse.button === Qt.RightButton) {
-                                        root.isEditMode = false
-                                    }
-                                    return
-                                }
-                                if (modelData === "omarchy.apps") {
-                                    if (mouse.button === Qt.RightButton) {
-                                        Util.execDetached("omarchy-menu toggle root")
-                                    } else {
-                                        Util.execDetached("omarchy-menu toggle apps")
-                                    }
-                                    return
-                                }
-                                var target = leftWidgetLoader.item
-                                if (target) {
-                                    root.configureHostedWidget(target, modelData, leftWidgetSlotRoot)
-                                    if (mouse.button === Qt.RightButton) {
-                                        if (typeof target.cycleFormat === "function") {
-                                            target.cycleFormat()
-                                        } else if (typeof target.toggleAllMuted === "function") {
-                                            target.toggleAllMuted()
-                                        } else if (typeof target.toggleBluetooth === "function") {
-                                            target.toggleBluetooth()
-                                        }
-                                    } else if (mouse.button === Qt.MiddleButton) {
-                                        if (modelData === "omarchy.microphone") {
-                                            root.handleWidgetSlotClick(modelData, mouse)
-                                        } else if (target.bar && typeof target.bar.run === "function") {
-                                            target.bar.run("omarchy-menu-timezone")
-                                        } else {
-                                            Util.execDetached("omarchy-menu-timezone")
-                                        }
-                                    } else {
-                                        if (typeof target.cycleLayout === "function") {
-                                            target.cycleLayout()
-                                        } else if (typeof target.runUpdate === "function") {
-                                            target.runUpdate()
-                                        } else if (typeof target.toggleMute === "function") {
-                                            target.toggleMute()
-                                        } else if (typeof target.toggle === "function") {
-                                            target.toggle()
-                                        } else if (typeof target.togglePanel === "function") {
-                                            target.togglePanel()
-                                        } else if (typeof target.open === "function") {
-                                            if (target.opened) target.close()
-                                            else target.open()
-                                        } else if (target.panel && typeof target.panel.open === "function") {
-                                            if (target.panel.open) target.panel.close()
-                                            else target.panel.open()
-                                        } else if ("opened" in target) {
-                                            target.opened = !target.opened
-                                        } else {
-                                            root.handleWidgetSlotClick(modelData, mouse)
-                                        }
-                                    }
-                                } else {
-                                    root.handleWidgetSlotClick(modelData, mouse)
-                                }
+                                root.activateWidget(modelData, leftWidgetLoader.item, leftWidgetSlotRoot, mouse)
                             }
                         }
                     }
@@ -3199,65 +3250,7 @@ Item {
                             acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
                             cursorShape: root.isEditMode ? Qt.ArrowCursor : Qt.PointingHandCursor
                             onClicked: function(mouse) {
-                                if (root.isEditMode) {
-                                    if (mouse.button === Qt.RightButton) {
-                                        root.isEditMode = false
-                                    }
-                                    return
-                                }
-                                if (modelData === "omarchy.apps") {
-                                    if (mouse.button === Qt.RightButton) {
-                                        Util.execDetached("omarchy-menu toggle root")
-                                    } else {
-                                        Util.execDetached("omarchy-menu toggle apps")
-                                    }
-                                    return
-                                }
-                                var target = rightWidgetLoader.item
-                                if (target) {
-                                    root.configureHostedWidget(target, modelData, rightWidgetSlotRoot)
-                                    if (mouse.button === Qt.RightButton) {
-                                        if (typeof target.cycleFormat === "function") {
-                                            target.cycleFormat()
-                                        } else if (typeof target.toggleAllMuted === "function") {
-                                            target.toggleAllMuted()
-                                        } else if (typeof target.toggleBluetooth === "function") {
-                                            target.toggleBluetooth()
-                                        }
-                                    } else if (mouse.button === Qt.MiddleButton) {
-                                        if (modelData === "omarchy.microphone") {
-                                            root.handleWidgetSlotClick(modelData, mouse)
-                                        } else if (target.bar && typeof target.bar.run === "function") {
-                                            target.bar.run("omarchy-menu-timezone")
-                                        } else {
-                                            Util.execDetached("omarchy-menu-timezone")
-                                        }
-                                    } else {
-                                        if (typeof target.cycleLayout === "function") {
-                                            target.cycleLayout()
-                                        } else if (typeof target.runUpdate === "function") {
-                                            target.runUpdate()
-                                        } else if (typeof target.toggleMute === "function") {
-                                            target.toggleMute()
-                                        } else if (typeof target.toggle === "function") {
-                                            target.toggle()
-                                        } else if (typeof target.togglePanel === "function") {
-                                            target.togglePanel()
-                                        } else if (typeof target.open === "function") {
-                                            if (target.opened) target.close()
-                                            else target.open()
-                                        } else if (target.panel && typeof target.panel.open === "function") {
-                                            if (target.panel.open) target.panel.close()
-                                            else target.panel.open()
-                                        } else if ("opened" in target) {
-                                            target.opened = !target.opened
-                                        } else {
-                                            root.handleWidgetSlotClick(modelData, mouse)
-                                        }
-                                    }
-                                } else {
-                                    root.handleWidgetSlotClick(modelData, mouse)
-                                }
+                                root.activateWidget(modelData, rightWidgetLoader.item, rightWidgetSlotRoot, mouse)
                             }
                         }
                     }
