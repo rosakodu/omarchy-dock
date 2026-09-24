@@ -1545,7 +1545,7 @@ function buildDockItems(pinnedList, toplevelsList, activeToplevel, desktopEntrie
                 var sIcon = resolveIcon(sEntry, sAppId, appLibrary);
                 var sName = sEntry && sEntry.name ? sEntry.name : sAppId;
                 var sIconSource = (sEntry && sEntry.iconSource) ? sEntry.iconSource : "";
-                var sDesktopId = (sEntry && sEntry.id) ? sEntry.id : (sAppId.indexOf(".desktop") !== -1 ? sAppId : (sAppId + ".desktop"));
+                var sDesktopId = (sEntry && sEntry.id) ? sEntry.id : sAppId;
                 var sRes = collectMatchingToplevels(sAppId, sEntry, entries, toplevels, assignedTops, toplevelCliApps, activeToplevel, isTopMinimized, getTopKey);
                 if (sRes.windowCount > 0) isAnySubRunning = true;
                 if (sRes.isActive) isAnySubActive = true;
@@ -1603,7 +1603,7 @@ function buildDockItems(pinnedList, toplevelsList, activeToplevel, desktopEntrie
             var icon = resolveIcon(entry, appId, appLibrary);
             var name = entry && entry.name ? entry.name : appId;
             var iconSource = (entry && entry.iconSource) ? entry.iconSource : "";
-            var desktopId = (entry && entry.id) ? entry.id : (appId.indexOf(".desktop") !== -1 ? appId : (appId + ".desktop"));
+            var desktopId = (entry && entry.id) ? entry.id : appId;
             var exec = (entry && entry.exec) ? entry.exec : "";
 
             var pRes = collectMatchingToplevels(appId, entry, entries, toplevels, assignedTops, toplevelCliApps, activeToplevel, isTopMinimized, getTopKey);
@@ -1682,7 +1682,7 @@ function buildDockItems(pinnedList, toplevelsList, activeToplevel, desktopEntrie
         var rIcon = resolveIcon(rEntry, rAppId, appLibrary);
         var rName = (rEntry && rEntry.name) ? rEntry.name : (rTitle || rAppId || "App");
         var rIconSource = (rEntry && rEntry.iconSource) ? rEntry.iconSource : "";
-        var rDesktopId = (rEntry && rEntry.id) ? rEntry.id : (rAppId ? (rAppId.indexOf(".desktop") !== -1 ? rAppId : (rAppId + ".desktop")) : "");
+        var rDesktopId = (rEntry && rEntry.id) ? rEntry.id : (rAppId || "");
         var rExec = (rEntry && rEntry.exec) ? rEntry.exec : "";
 
         // Find all unassigned toplevels for this unpinned app

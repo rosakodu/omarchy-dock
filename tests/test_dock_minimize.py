@@ -116,6 +116,27 @@ class FindDesktopFileTest(unittest.TestCase):
                 else:
                     os.environ.pop("XDG_DATA_DIRS", None)
 
+    def test_an_entry_id_ending_in_desktop_names_its_own_file(self):
+        # Telegram is shipped as org.telegram.desktop.desktop, so its entry id
+        # org.telegram.desktop is not itself a file name.
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmpdir:
+            app_dir = os.path.join(tmpdir, "applications")
+            os.makedirs(app_dir, exist_ok=True)
+            with open(os.path.join(app_dir, "org.telegram.desktop.desktop"), "w") as f:
+                f.write("[Desktop Entry]\nName=Telegram\nType=Application\nExec=true\n")
+
+            old_xdg = os.environ.get("XDG_DATA_DIRS", "")
+            try:
+                os.environ["XDG_DATA_DIRS"] = tmpdir
+                found = dm.find_desktop_file("org.telegram.desktop")
+                self.assertEqual(found, "org.telegram.desktop.desktop")
+            finally:
+                if old_xdg:
+                    os.environ["XDG_DATA_DIRS"] = old_xdg
+                else:
+                    os.environ.pop("XDG_DATA_DIRS", None)
+
     def test_path_traversal_and_null_bytes_rejected(self):
         self.assertEqual(dm.find_desktop_file("/etc/passwd"), "")
         self.assertEqual(dm.find_desktop_file("../app.desktop"), "")
