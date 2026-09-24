@@ -491,7 +491,7 @@ PanelWindow {
                         radius: 7
 
                         readonly property bool isInDock: (pickerWindow.root && pickerWindow.root.dockWidgets && pickerWindow.root.dockWidgets.indexOf(modelData.id) !== -1)
-                        readonly property bool isInBar: pickerWindow.shell && pickerWindow.shell.pluginRegistry && typeof pickerWindow.shell.pluginRegistry.inBar === "function" && pickerWindow.shell.pluginRegistry.inBar(modelData.id)
+                        readonly property bool isInBar: !!(pickerWindow.shell && pickerWindow.shell.pluginRegistry && typeof pickerWindow.shell.pluginRegistry.inBar === "function" && pickerWindow.shell.pluginRegistry.inBar(modelData.id))
                         readonly property bool isHovered: itemMouse.containsMouse
 
                         color: isInDock ? Color.composed("menu.selectedBackground", "menu.selectedBackground-alpha", Color.accent, isHovered ? 0.18 : 0.10) : (isHovered ? Color.composed("menu.text", "menu.text-alpha", Color.text, 0.06) : "transparent")
