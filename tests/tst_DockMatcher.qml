@@ -415,4 +415,28 @@ TestCase {
         compare(pinnedItems[0].isRunning, true)
         compare(pinnedItems[0].isActive, true)
     }
+
+    function test_braveOriginWebAppMatching() {
+        var braveOriginEntry = { id: "brave-origin.desktop", name: "Brave Origin", exec: "brave-origin %U", icon: "brave-origin" }
+        var whatsappEntry = { id: "WhatsApp.desktop", name: "WhatsApp", exec: "omarchy-launch-webapp https://web.whatsapp.com/", icon: "whatsapp" }
+        var entries = [braveOriginEntry, whatsappEntry]
+        var browserTop = { appId: "brave-origin", title: "New Tab - Brave Origin" }
+        var webAppTop = { appId: "brave-web.whatsapp.com__-Default", title: "WhatsApp" }
+
+        // 1. Brave Origin is a browser, not a web app for a site called "origin"
+        compare(DockMatcher.isBrowserApp("brave-origin"), true)
+        compare(DockMatcher.extractChromeDomain("brave-origin"), "")
+
+        // 2. The Brave Origin item keeps its own window but leaves web app windows alone
+        compare(DockMatcher.matchToplevel(browserTop, "brave-origin", braveOriginEntry, entries), true)
+        compare(DockMatcher.matchToplevel(webAppTop, "brave-origin", braveOriginEntry, entries), false)
+
+        // 3. buildDockItems: the browser window listed first must not absorb the web app window
+        var items = DockMatcher.buildDockItems([], [browserTop, webAppTop], browserTop, entries, null, {}, {}, 0, [])
+        compare(items.length, 2)
+        compare(items[0].desktopId, "brave-origin.desktop")
+        compare(items[0].windowCount, 1)
+        compare(items[1].desktopId, "WhatsApp.desktop")
+        compare(items[1].windowCount, 1)
+    }
 }
