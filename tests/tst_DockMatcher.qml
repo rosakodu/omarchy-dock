@@ -12,6 +12,18 @@ TestCase {
         compare(DockMatcher.stripDesktop(""), "")
     }
 
+    function test_toCanonical_keepsWebAppsApart() {
+        // Each Chromium web app keys on its own site, so a count in one app's
+        // title does not badge every other web app.
+        compare(DockMatcher.toCanonical("chrome-youtube.com__-Default"), "youtube")
+        compare(DockMatcher.toCanonical("chrome-maps.google.com__-Default"), "maps")
+        compare(DockMatcher.toCanonical("chrome-web.whatsapp.com__-Default"), "whatsapp")
+        compare(DockMatcher.toCanonical("chrome-www.example.org__-Profile_1"), "example")
+        // The browser itself still folds to "chrome".
+        compare(DockMatcher.toCanonical("google-chrome"), "chrome")
+        compare(DockMatcher.toCanonical("chromium"), "chrome")
+    }
+
     function test_desktopEntryIndex_fastLookup() {
         var mockEntries = [
             { id: "google-chrome.desktop", name: "Google Chrome", exec: "/usr/bin/google-chrome-stable", icon: "google-chrome" },

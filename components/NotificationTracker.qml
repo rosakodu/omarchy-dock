@@ -119,6 +119,14 @@ Item {
         if (raw.indexOf("code") !== -1 || raw.indexOf("vscodium") !== -1 || raw.indexOf("vscode") !== -1) return "code"
         if (raw.indexOf("nautilus") !== -1 || raw.indexOf("org.gnome.nautilus") !== -1 || raw.indexOf("thunar") !== -1 || raw.indexOf("dolphin") !== -1) return "nautilus"
         if (raw.indexOf("kitty") !== -1 || raw.indexOf("alacritty") !== -1 || raw.indexOf("ghostty") !== -1 || raw.indexOf("foot") !== -1 || raw.indexOf("terminal") !== -1) return "terminal"
+        // Chromium web apps ("chrome-youtube.com__-Default") must keep their own site
+        // as the key. Folding them all into "chrome" made a number in ONE app's title
+        // (YouTube's "(13) ...") show as a badge on EVERY web app (Maps too).
+        var webApp = raw.match(/^chrome-([a-z0-9.-]+?)__/)
+        if (webApp) {
+            var labels = webApp[1].replace(/^(www|web|app|m)\./, "").split(".")
+            if (labels[0]) return labels[0]
+        }
         if (raw.indexOf("chrome") !== -1 || raw.indexOf("chromium") !== -1) return "chrome"
         if (raw.indexOf("firefox") !== -1 || raw.indexOf("zen-browser") !== -1) return "firefox"
 
