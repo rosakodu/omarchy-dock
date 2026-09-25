@@ -42,9 +42,15 @@ IGNORED_COMMAND_PREFIXES = [
 ]
 
 KNOWN_TERMINALS = [
-    "foot", "footclient", "kitty", "alacritty", "ghostty", "wezterm",
-    "org.wezfurlong.wezterm", "gnome-terminal", "konsole", "xfce4-terminal",
-    "xterm", "urxvt", "rxvt", "termite", "tilix", "st", "rio"
+    "foot", "footclient", "kitty", "alacritty", "org.alacritty",
+    "ghostty", "com.mitchellh.ghostty", "wezterm", "wezterm-gui",
+    "org.wezfurlong.wezterm", "gnome-terminal", "org.gnome.terminal",
+    "konsole", "org.kde.konsole", "xfce4-terminal", "tilix",
+    "com.gexperts.tilix", "xterm", "uxterm", "urxvt", "rxvt",
+    "rxvt-unicode", "termite", "terminator", "lxterminal", "st",
+    "simple-terminal", "rio", "contour", "blackbox",
+    "com.raggesilver.blackbox", "ptyxis", "org.gnome.ptyxis",
+    "tabby", "hyper", "warp", "warp-terminal"
 ]
 
 def get_terminal_child_app(pid):
@@ -146,10 +152,20 @@ def extract_cli_app(title, pid=None):
 def is_terminal_identifier(s):
     if not s:
         return False
-    norm = normalize(s)
+    raw = str(s).lower().strip()
+    if raw.endswith(".desktop"):
+        raw = raw[:-8]
+    # normalize() strips only the org./com./net./io. prefix, so a reverse-DNS
+    # app-id such as "com.mitchellh.ghostty" normalizes to "mitchellhghostty"
+    # and never equals "ghostty". Also test the last dotted segment.
+    candidates = [normalize(s)]
+    if "." in raw:
+        candidates.append(normalize(raw.rsplit(".", 1)[-1]))
     for term in KNOWN_TERMINALS:
-        if norm == normalize(term):
-            return True
+        nt = normalize(term)
+        for cand in candidates:
+            if cand and cand == nt:
+                return True
     return False
 
 def get_hypr_socket():
