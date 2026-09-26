@@ -373,6 +373,7 @@ Item {
     readonly property int effectiveAutohideEdgeDepth: Math.max(4, Math.min(64, root.autohideEdgeDepth))
     property bool showFolderTitles: true
     property bool showBadges: true
+    property bool showBorder: true
     property bool glassmorphism: false
     property real blurOpacity: 0.68
     readonly property bool showAppMenu: root.widgetsEnabled && root.dockWidgets && (root.dockWidgets.indexOf("omarchy.apps") !== -1)
@@ -943,6 +944,9 @@ Item {
                 if (s.showBadges !== undefined) {
                     root.showBadges = (s.showBadges === true)
                 }
+                if (s.showBorder !== undefined) {
+                    root.showBorder = (s.showBorder === true)
+                }
                 if (s.glassmorphism !== undefined) {
                     root.glassmorphism = (s.glassmorphism === true)
                 }
@@ -1006,6 +1010,7 @@ Item {
             autohideEdgeDepth: root.autohideEdgeDepth,
             showFolderTitles: root.showFolderTitles,
             showBadges: root.showBadges,
+            showBorder: root.showBorder,
             glassmorphism: root.glassmorphism,
             blurOpacity: root.blurOpacity,
             widgetsEnabled: root.widgetsEnabled,
@@ -1019,6 +1024,11 @@ Item {
 
     function setDockEnabled(val) {
         root.dockEnabled = (val === true || val === "true" || val === 1 || val === "1")
+        saveSettings()
+    }
+
+    function setShowBorder(val) {
+        root.showBorder = (val === true || val === "true" || val === 1 || val === "1")
         saveSettings()
     }
 
@@ -1655,7 +1665,7 @@ Item {
     }
 
     property var dockBorderSpec: {
-        if (root.isBarTransparent || root.systemBorderSize <= 0) {
+        if (!root.showBorder || root.isBarTransparent || root.systemBorderSize <= 0) {
             return Border.none()
         }
         var raw = root.hyprlandActiveBorderRaw
