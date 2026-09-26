@@ -382,6 +382,8 @@ Item {
     property var dockWidgets: []
     property var widgetSavedPositions: ({})
     property bool isDockHovered: false
+    // The pointer is over an app's hover window list, which lives outside the dock surface.
+    property bool isWindowListHovered: false
     property bool isStackHovered: false
     property bool isMenuHovered: false
     property bool isWidgetPanelHovered: false
@@ -594,7 +596,7 @@ Item {
         var anyOpenWidget = checkWidgetPanelsOpen()
         var isDockWinHovered = !root.shouldSlideOut && root.anyDockSurfaceHovered()
         var anyPopupsActive = root.isStackOpen || root.isMenuOpen || root.isEditingFolderTitle || root.isEditMode || (root.widgetPicker && root.widgetPicker.opened)
-        var anyHover = isDockWinHovered || root.isStackHovered || root.isMenuHovered || root.isWidgetPanelHovered || anyOpenWidget || anyPopupsActive
+        var anyHover = isDockWinHovered || root.isStackHovered || root.isMenuHovered || root.isWindowListHovered || root.isWidgetPanelHovered || anyOpenWidget || anyPopupsActive
         if (anyHover) {
             autohideLeaveTimer.stop()
             root.isDockHovered = true
@@ -611,7 +613,7 @@ Item {
             if (!root.autohide) return
             var anyOpenWidget = root.checkWidgetPanelsOpen()
             var anyPopupsActive = root.isStackOpen || root.isMenuOpen || root.isEditingFolderTitle || root.isEditMode || (root.widgetPicker && root.widgetPicker.opened)
-            var anyHover = root.anyDockSurfaceHovered() || root.isStackHovered || root.isMenuHovered || root.isWidgetPanelHovered || anyOpenWidget || anyPopupsActive
+            var anyHover = root.anyDockSurfaceHovered() || root.isStackHovered || root.isMenuHovered || root.isWindowListHovered || root.isWidgetPanelHovered || anyOpenWidget || anyPopupsActive
             if (!anyHover) {
                 root.isDockHovered = false
                 if (DockSettings.shouldAutoDismissKeyboardReveal(root.visibilityMode, root.visibilityOverride)) {
@@ -3081,6 +3083,11 @@ Item {
 
                         onMinimizeRequested: function(item, targetIndex) {
                             root.minimizeItem(item, targetIndex)
+                        }
+
+                        onWindowListHoverChanged: function(hovered) {
+                            root.isWindowListHovered = hovered
+                            root.evaluateHoverState()
                         }
 
                         onDissolveRequested: function(stackId) {
