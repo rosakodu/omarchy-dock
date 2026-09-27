@@ -219,5 +219,20 @@ class PickTargetExplicitAddressTest(unittest.TestCase):
         self.assertIs(picked, target_win)
 
 
+class ScanDiskIconsTest(unittest.TestCase):
+    def test_scan_disk_icons_finds_system_icons(self):
+        icons = dm.scan_disk_icons()
+        self.assertIsInstance(icons, dict)
+        self.assertGreater(len(icons), 0)
+        # omanta and omashow should be discovered if installed on this system
+        if os.path.exists("/usr/share/icons/hicolor/scalable/apps/omanta.svg"):
+            self.assertIn("omanta", icons)
+            self.assertTrue(icons["omanta"].endswith(".svg"))
+        if os.path.exists("/usr/share/icons/hicolor/scalable/apps/omashow.svg"):
+            self.assertIn("omashow", icons)
+            self.assertTrue(icons["omashow"].endswith(".svg"))
+
+
 if __name__ == "__main__":
     unittest.main()
+

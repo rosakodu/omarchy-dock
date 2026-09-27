@@ -684,6 +684,54 @@ function findEntry(desktopEntries, appId) {
     return null;
 }
 
+var _diskIcons = {};
+
+function setDiskIcons(iconsObj) {
+    _diskIcons = {};
+    if (iconsObj && typeof iconsObj === "object") {
+        for (var k in iconsObj) {
+            var path = iconsObj[k];
+            if (path && typeof path === "string") {
+                _diskIcons[k] = path;
+                var low = k.toLowerCase();
+                if (!_diskIcons[low]) _diskIcons[low] = path;
+                if (low.indexOf(".") !== -1) {
+                    var parts = low.split(".");
+                    var last = parts[parts.length - 1];
+                    if (last && !_diskIcons[last]) _diskIcons[last] = path;
+                }
+            }
+        }
+    }
+}
+
+function getDiskIcon(name) {
+    if (!name) return "";
+    var s = String(name).trim();
+    if (s.indexOf("://") >= 0) return s;
+    if (s.charAt(0) === "/") return "file://" + s;
+
+    var low = s.toLowerCase();
+    if (_diskIcons[low]) return "file://" + _diskIcons[low];
+    if (_diskIcons[s]) return "file://" + _diskIcons[s];
+
+    var cleaned = cleanWindowAppId(s);
+    if (cleaned && _diskIcons[cleaned]) return "file://" + _diskIcons[cleaned];
+    if (cleaned && _diskIcons[cleaned.toLowerCase()]) return "file://" + _diskIcons[cleaned.toLowerCase()];
+
+    var stripped = stripDesktop(s);
+    if (stripped && _diskIcons[stripped]) return "file://" + _diskIcons[stripped];
+    if (stripped && _diskIcons[stripped.toLowerCase()]) return "file://" + _diskIcons[stripped.toLowerCase()];
+
+    if (low.indexOf(".") !== -1) {
+        var dotParts = low.split(".");
+        var dotLast = dotParts[dotParts.length - 1];
+        if (dotLast && _diskIcons[dotLast]) return "file://" + _diskIcons[dotLast];
+    }
+
+    return "";
+}
+
 function resolveIcon(entry, appId, appLibrary) {
     if (entry && entry.iconSource && entry.iconSource.length > 0 && entry.iconSource.indexOf("application-x-executable") === -1) {
         return entry.iconSource;
@@ -692,6 +740,8 @@ function resolveIcon(entry, appId, appLibrary) {
         var iconVal = String(entry.icon).trim();
         if (iconVal.indexOf("file://") === 0 || iconVal.indexOf("image://") === 0) return iconVal;
         if (iconVal.charAt(0) === "/") return "file://" + iconVal;
+        var diskFound = getDiskIcon(iconVal);
+        if (diskFound) return diskFound;
         if (appLibrary && typeof appLibrary.iconSource === "function") {
             var src = appLibrary.iconSource(iconVal);
             if (src && src.length > 0 && src.indexOf("application-x-executable") === -1) return src;
@@ -699,24 +749,39 @@ function resolveIcon(entry, appId, appLibrary) {
         return iconVal;
     }
     var id = stripDesktop(appId);
+    var diskIdFound = getDiskIcon(id);
+    if (diskIdFound) return diskIdFound;
+
     if (appLibrary && typeof appLibrary.iconSource === "function") {
         var candidates = getCandidates(entry ? entry.icon : "", "", id);
         for (var i = 0; i < candidates.length; i++) {
             var cand = candidates[i];
             if (cand.indexOf("file://") === 0 || cand.indexOf("image://") === 0) return cand;
             if (cand.charAt(0) === "/") return "file://" + cand;
+            var cDisk = getDiskIcon(cand);
+            if (cDisk) return cDisk;
             var cSrc = appLibrary.iconSource(cand);
             if (cSrc && cSrc.length > 0 && cSrc.indexOf("application-x-executable") === -1) return cSrc;
         }
 
         // Try hyphenated/spaced variations (e.g. "Google Maps" -> "google-maps")
         var hyp = id.toLowerCase().replace(/\s+/g, "-");
+        var hypDisk = getDiskIcon(hyp);
+        if (hypDisk) return hypDisk;
         var src3 = appLibrary.iconSource(hyp);
         if (src3 && src3.length > 0 && src3.indexOf("application-x-executable") === -1) return src3;
 
         var spc = id.toLowerCase().replace(/[-_]+/g, " ");
+        var spcDisk = getDiskIcon(spc);
+        if (spcDisk) return spcDisk;
         var src4 = appLibrary.iconSource(spc);
         if (src4 && src4.length > 0 && src4.indexOf("application-x-executable") === -1) return src4;
+    } else {
+        var cands = getCandidates(entry ? entry.icon : "", "", id);
+        for (var ci = 0; ci < cands.length; ci++) {
+            var cd = getDiskIcon(cands[ci]);
+            if (cd) return cd;
+        }
     }
     return id || "application-x-executable";
 }

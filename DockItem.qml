@@ -71,6 +71,10 @@ Item {
             var c = cands[i]
             if (c.indexOf("://") >= 0) return c
             if (c.indexOf("/") === 0) return "file://" + c
+            var diskHit = DockModel.getDiskIcon(c)
+            if (diskHit) return diskHit
+            var diskHitLow = DockModel.getDiskIcon(c.toLowerCase())
+            if (diskHitLow) return diskHitLow
             if (shell && shell.appLibrary && typeof shell.appLibrary.iconSource === "function") {
                 var src = shell.appLibrary.iconSource(c)
                 if (src && src.length > 0 && src.indexOf("application-x-executable") === -1) {
@@ -220,7 +224,16 @@ Item {
             width: root.iconBaseSize
             height: root.iconBaseSize
             fillMode: Image.PreserveAspectFit
-            source: "file:///usr/share/pixmaps/omarchy.png"
+            source: {
+                if (root.itemData) {
+                    var raw = root.itemData.rawIcon || root.itemData.icon || root.itemData.appId || root.itemData.id || ""
+                    var dIcon = DockModel.getDiskIcon(raw)
+                    if (dIcon) return dIcon
+                    var dIconLow = DockModel.getDiskIcon(String(raw).toLowerCase())
+                    if (dIconLow) return dIconLow
+                }
+                return "file:///usr/share/pixmaps/omarchy.png"
+            }
             sourceSize: Qt.size(Math.max(128, width * 4 * Screen.devicePixelRatio), Math.max(128, height * 4 * Screen.devicePixelRatio))
             smooth: true
             antialiasing: true

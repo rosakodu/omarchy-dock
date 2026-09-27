@@ -409,15 +409,99 @@ def launch_fallback(queries):
                 except Exception:
                     pass
 
+def scan_disk_icons():
+    """Scan system and user icon directories for app icons.
+
+    Returns a dict mapping lowercase icon base name -> absolute file path.
+    Scalable SVG icons take precedence over PNGs.
+    """
+    search_subdirs = [
+        "hicolor/scalable/apps",
+        "hicolor/scalable/devices",
+        "hicolor/256x256/apps",
+        "hicolor/128x128/apps",
+        "hicolor/48x48/apps",
+        "hicolor/32x32/apps",
+        "hicolor/16x16/apps",
+        "scalable/apps",
+        "scalable/devices"
+    ]
+
+    home = os.path.expanduser("~")
+    base_dirs = [
+        os.path.join(home, ".local", "share", "icons"),
+        os.path.join(home, ".icons"),
+        "/usr/local/share/icons",
+        "/usr/share/icons"
+    ]
+    xdg_dirs = [d for d in os.environ.get("XDG_DATA_DIRS", "").split(":") if d]
+    for d in xdg_dirs:
+        ic = os.path.join(d, "icons")
+        if ic not in base_dirs and os.path.isdir(ic):
+            base_dirs.append(ic)
+
+    svg_icons = {}
+    png_icons = {}
+
+    for b in base_dirs:
+        for sub in search_subdirs:
+            p = os.path.join(b, sub)
+            if os.path.isdir(p):
+                try:
+                    for f in os.listdir(p):
+                        fl = f.lower()
+                        if fl.endswith(".svg"):
+                            k = fl[:-4]
+                            if k not in svg_icons:
+                                svg_icons[k] = os.path.join(p, f)
+                        elif fl.endswith(".png"):
+                            k = fl[:-4]
+                            if k not in png_icons:
+                                png_icons[k] = os.path.join(p, f)
+                except Exception:
+                    pass
+
+    for p in ("/usr/share/pixmaps", "/usr/local/share/pixmaps"):
+        if os.path.isdir(p):
+            try:
+                for f in os.listdir(p):
+                    fl = f.lower()
+                    if fl.endswith(".svg"):
+                        k = fl[:-4]
+                        if k not in svg_icons:
+                            svg_icons[k] = os.path.join(p, f)
+                    elif fl.endswith(".png"):
+                        k = fl[:-4]
+                        if k not in png_icons:
+                            png_icons[k] = os.path.join(p, f)
+            except Exception:
+                pass
+
+    merged = dict(png_icons)
+    merged.update(svg_icons)
+
+    extras = {}
+    for k, v in merged.items():
+        if "." in k:
+            suffix = k.rsplit(".", 1)[-1]
+            if suffix and suffix not in merged and suffix not in extras:
+                extras[suffix] = v
+    merged.update(extras)
+    return merged
+
 def main():
     if len(sys.argv) < 2:
         return
 
     mode = "minimize"
     arg_start = 1
-    if sys.argv[1] in ("minimize", "restore", "restore-or-launch", "toggle-active", "toggle-or-cycle", "toggle-instance", "activate-instance", "toggle", "activate", "scan-cli"):
+    if sys.argv[1] in ("minimize", "restore", "restore-or-launch", "toggle-active", "toggle-or-cycle", "toggle-instance", "activate-instance", "toggle", "activate", "scan-cli", "scan-icons"):
         mode = sys.argv[1]
         arg_start = 2
+
+    if mode == "scan-icons":
+        print(json.dumps(scan_disk_icons()))
+        return
 
     queries = [q.strip() for q in sys.argv[arg_start:] if q.strip()]
     if not queries and mode != "scan-cli":

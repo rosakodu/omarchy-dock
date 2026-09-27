@@ -1963,6 +1963,10 @@ Item {
             var c = cands[i]
             if (c.indexOf("://") >= 0) return c
             if (c.indexOf("/") === 0) return "file://" + c
+            var diskHit = DockModel.getDiskIcon(c)
+            if (diskHit) return diskHit
+            var diskHitLow = DockModel.getDiskIcon(c.toLowerCase())
+            if (diskHitLow) return diskHitLow
             if (shell && shell.appLibrary && typeof shell.appLibrary.iconSource === "function") {
                 var src = shell.appLibrary.iconSource(c)
                 if (src && src.length > 0 && src.indexOf("application-x-executable") === -1) {
@@ -2097,6 +2101,7 @@ Item {
         root.pinnedIds = DockModel.parsePinned(userPinnedFile.text() || "")
         root.refreshLayers()
         root.updatePluginEnabled()
+        iconScanDebounceTimer.restart()
         root.updateDockItems()
         return "ok"
     }
@@ -2294,6 +2299,36 @@ Item {
         }
     }
 
+    Process {
+        id: iconScannerProc
+        running: false
+        command: ["python3", Qt.resolvedUrl("scripts/dock-minimize.py").toString().replace(/^file:\/\//, ""), "scan-icons"]
+        stdout: StdioCollector {
+            waitForEnd: true
+            onStreamFinished: {
+                try {
+                    var icons = JSON.parse(text)
+                    if (icons && typeof icons === "object") {
+                        DockModel.setDiskIcons(icons)
+                        root.iconRevision++
+                        root.updateDockItems()
+                    }
+                } catch(e) {}
+            }
+        }
+    }
+
+    Timer {
+        id: iconScanDebounceTimer
+        interval: 200
+        repeat: false
+        onTriggered: {
+            if (!iconScannerProc.running) {
+                iconScannerProc.running = true
+            }
+        }
+    }
+
     Timer {
         id: terminalSettleTimer
         interval: 100
@@ -2346,6 +2381,7 @@ Item {
             }
             if (name === "openwindow") {
                 root.lastWindowOpenTime = Date.now()
+                iconScanDebounceTimer.restart()
                 var openArgs = String(event.args || "")
                 var openParts = openArgs.split(",")
                 var openClass = openParts.length >= 3 ? openParts[2].trim().toLowerCase() : ""
@@ -2406,6 +2442,7 @@ Item {
         target: DesktopEntries.applications
         function onValuesChanged() {
             root.appRows = (shell && shell.appLibrary) ? shell.appLibrary.sortedEntries("") : (DesktopEntries.applications.values || [])
+            iconScanDebounceTimer.restart()
             root.iconRevision++
             root.updateDockItems()
         }
@@ -2434,6 +2471,7 @@ Item {
             if (shell && shell.appLibrary && typeof shell.appLibrary.refreshIcons === "function") {
                 shell.appLibrary.refreshIcons()
             }
+            iconScanDebounceTimer.restart()
             root.appRows = (shell && shell.appLibrary) ? shell.appLibrary.sortedEntries("") : []
             root.iconRevision++
             root.doUpdateDockItems()
@@ -2586,6 +2624,7 @@ Item {
                 return origAppLibLaunch.apply(this, arguments)
             }
         }
+        iconScanDebounceTimer.restart()
         root.doUpdateDockItems()
     }
 

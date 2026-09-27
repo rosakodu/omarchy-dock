@@ -58,6 +58,8 @@ var getBadgeInfo = Matcher.getBadgeInfo;
 var buildDockItems = Matcher.buildDockItems;
 var setPendingCliHint = Matcher.setPendingCliHint;
 var setDetectedCliApps = Matcher.setDetectedCliApps;
+var setDiskIcons = Matcher.setDiskIcons;
+var getDiskIcon = Matcher.getDiskIcon;
 
 // =========================================================================
 // 4. Dock Widget Management (DockWidgets.js)

@@ -451,4 +451,34 @@ TestCase {
         compare(items[1].desktopId, "WhatsApp.desktop")
         compare(items[1].windowCount, 1)
     }
+
+    function test_diskIconLookup() {
+        DockMatcher.setDiskIcons({
+            "omanta": "/usr/share/icons/hicolor/scalable/apps/omanta.svg",
+            "omashow": "/usr/share/icons/hicolor/scalable/apps/omashow.svg",
+            "org.gnome.nautilus": "/usr/share/icons/hicolor/scalable/apps/org.gnome.Nautilus.svg"
+        })
+
+        // Exact match
+        compare(DockMatcher.getDiskIcon("omanta"), "file:///usr/share/icons/hicolor/scalable/apps/omanta.svg")
+        compare(DockMatcher.getDiskIcon("omashow"), "file:///usr/share/icons/hicolor/scalable/apps/omashow.svg")
+
+        // Case insensitivity
+        compare(DockMatcher.getDiskIcon("Omanta"), "file:///usr/share/icons/hicolor/scalable/apps/omanta.svg")
+        compare(DockMatcher.getDiskIcon("OMASHOW"), "file:///usr/share/icons/hicolor/scalable/apps/omashow.svg")
+
+        // Desktop suffix stripping
+        compare(DockMatcher.getDiskIcon("omanta.desktop"), "file:///usr/share/icons/hicolor/scalable/apps/omanta.svg")
+
+        // Reverse-DNS fallback
+        compare(DockMatcher.getDiskIcon("nautilus"), "file:///usr/share/icons/hicolor/scalable/apps/org.gnome.Nautilus.svg")
+
+        // resolveIcon integration
+        var resolved = DockMatcher.resolveIcon(null, "omanta", null)
+        compare(resolved, "file:///usr/share/icons/hicolor/scalable/apps/omanta.svg")
+
+        var resolvedShow = DockMatcher.resolveIcon({ icon: "omashow" }, "omashow", null)
+        compare(resolvedShow, "file:///usr/share/icons/hicolor/scalable/apps/omashow.svg")
+    }
 }
+
