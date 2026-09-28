@@ -635,28 +635,54 @@ Item {
         root.activeWorkspaceWindowCount = root.getActiveWorkspaceWindowCount()
     }
 
+    onCurrentDockWorkspaceChanged: root.refreshActiveWorkspaceWindowCount()
+
     Connections {
-        target: Hyprland
-        function onFocusedWorkspaceChanged() { root.refreshActiveWorkspaceWindowCount() }
-        function onRawEvent(event) { root.refreshActiveWorkspaceWindowCount() }
+        target: (typeof Hyprland !== "undefined") ? Hyprland : null
+        function onFocusedWorkspaceChanged() {
+            root.refreshActiveWorkspaceWindowCount()
+            workspaceSyncTimer.restart()
+        }
+        function onRawEvent(event) {
+            if (!event) return
+            var name = String(event.name || "")
+            if (name === "openwindow" || name === "closewindow" ||
+                name === "movewindow" || name === "movewindowv2" ||
+                name === "workspace" || name === "workspacev2" ||
+                name === "focusedmon" || name === "changefloatingmode" ||
+                name === "activewindow" || name === "activewindowv2" ||
+                name === "fullscreen") {
+                root.refreshActiveWorkspaceWindowCount()
+                workspaceSyncTimer.restart()
+            }
+        }
     }
 
     Connections {
-        target: Hyprland.workspaces
-        function onValuesChanged() { root.refreshActiveWorkspaceWindowCount() }
+        target: (typeof Hyprland !== "undefined" && Hyprland.workspaces) ? Hyprland.workspaces : null
+        function onValuesChanged() {
+            root.refreshActiveWorkspaceWindowCount()
+            workspaceSyncTimer.restart()
+        }
     }
 
     Connections {
-        target: ToplevelManager.toplevels
-        function onValuesChanged() { root.refreshActiveWorkspaceWindowCount() }
+        target: (typeof ToplevelManager !== "undefined" && ToplevelManager.toplevels) ? ToplevelManager.toplevels : null
+        function onValuesChanged() {
+            root.refreshActiveWorkspaceWindowCount()
+        }
     }
 
     Timer {
-        id: workspaceCheckTimer
-        interval: 200
-        running: (root.visibilityMode === "hover" || root.visibilityMode === "hybrid") && root.workspaceAllowed
-        repeat: true
-        onTriggered: root.refreshActiveWorkspaceWindowCount()
+        id: workspaceSyncTimer
+        interval: 80
+        repeat: false
+        onTriggered: {
+            if (typeof Hyprland !== "undefined" && typeof Hyprland.refreshToplevels === "function") {
+                Hyprland.refreshToplevels()
+            }
+            root.refreshActiveWorkspaceWindowCount()
+        }
     }
 
     readonly property bool isWorkspaceEmpty: root.activeWorkspaceWindowCount === 0

@@ -525,6 +525,102 @@ TestCase {
         compare(items[0].desktopId, "Amazon - Personal")
         compare(items[0].exec, "/home/user/chrome-app personal --app=\"https://www.amazon.ca/\"")
     }
+
+    function test_browserNeverSwallowedByWebAppLauncher() {
+        var xEntry = {
+            id: "X.desktop",
+            name: "X",
+            exec: "omarchy-launch-webapp https://x.com/",
+            icon: "x"
+        }
+        var yandexEntry = {
+            id: "yandex-browser.desktop",
+            name: "Yandex Browser",
+            exec: "/usr/bin/yandex-browser-stable %U",
+            icon: "yandex-browser"
+        }
+        var chromeEntry = {
+            id: "google-chrome.desktop",
+            name: "Google Chrome",
+            exec: "/usr/bin/google-chrome-stable",
+            icon: "google-chrome"
+        }
+        var antigravityEntry = {
+            id: "antigravity.desktop",
+            name: "Antigravity",
+            exec: "antigravity",
+            icon: "antigravity"
+        }
+
+        var entries = [xEntry, yandexEntry, chromeEntry, antigravityEntry]
+
+        var yandexTop = {
+            appId: "yandex-browser",
+            title: "(3) Нашел замену ThinkPad это... - YouTube — Yandex Browser",
+            address: "0x653d29fbe5a0"
+        }
+        var chromeTop = {
+            appId: "google-chrome",
+            title: "Releases · xXJSONDeruloXx/decky-lsfg-vk - Google Chrome",
+            address: "0x653d29f01360"
+        }
+        var antigravityTop = {
+            appId: "antigravity",
+            title: "Dock - Dock - Antigravity",
+            address: "0x653d29f50030"
+        }
+
+        // 1. Direct matching: X webapp item must NEVER match yandex-browser or google-chrome windows
+        compare(DockMatcher.matchToplevel(yandexTop, "chrome-x.com__-Default", xEntry, entries), false)
+        compare(DockMatcher.matchToplevel(chromeTop, "chrome-x.com__-Default", xEntry, entries), false)
+
+        // 2. Browser items match their own windows
+        compare(DockMatcher.matchToplevel(yandexTop, "yandex-browser", yandexEntry, entries), true)
+        compare(DockMatcher.matchToplevel(chromeTop, "google-chrome", chromeEntry, entries), true)
+
+        // 3. Full buildDockItems test with pinned items matching user environment
+        var pinned = [
+            "foot",
+            "io.github.lgse.Strata",
+            "google-chrome",
+            "antigravity",
+            "chrome-x.com__-Default",
+            "chrome-discord.com__channels_@me-Default",
+            "org.kde.krita",
+            "steam"
+        ]
+
+        var toplevels = [chromeTop, antigravityTop, yandexTop]
+        var items = DockMatcher.buildDockItems(pinned, toplevels, antigravityTop, entries, null, {}, {}, 0, [])
+
+        // 8 pinned + 1 unpinned (yandex-browser) = 9 items
+        compare(items.length, 9)
+
+        // Pinned chrome-x.com__-Default must NOT be running
+        var xItem = items[4]
+        compare(xItem.id, "chrome-x.com__-Default")
+        compare(xItem.isRunning, false)
+        compare(xItem.windowCount, 0)
+
+        // Pinned google-chrome must be running
+        var chromeItem = items[2]
+        compare(chromeItem.id, "google-chrome")
+        compare(chromeItem.isRunning, true)
+        compare(chromeItem.windowCount, 1)
+
+        // Pinned antigravity must be running
+        var antiItem = items[3]
+        compare(antiItem.id, "antigravity")
+        compare(antiItem.isRunning, true)
+        compare(antiItem.windowCount, 1)
+
+        // Unpinned item for yandex-browser must exist and be running
+        var yandexItem = items[8]
+        compare(yandexItem.id, "yandex-browser")
+        compare(yandexItem.isPinned, false)
+        compare(yandexItem.isRunning, true)
+        compare(yandexItem.windowCount, 1)
+    }
 }
 
 

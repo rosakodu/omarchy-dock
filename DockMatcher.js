@@ -795,7 +795,12 @@ function resolveIcon(entry, appId, appLibrary) {
 
 function isBrowserApp(id) {
     var s = String(id || "").toLowerCase();
-    return s === "google-chrome" || s === "google-chrome-stable" || s === "chromium" || s === "brave" || s === "brave-browser" || s === "brave-origin" || s === "microsoft-edge" || s === "opera" || s === "vivaldi" || s === "yandex-browser" || s === "yandex-browser-stable" || s === "ru.yandex.desktop.browser";
+    return s === "google-chrome" || s === "google-chrome-stable" || s === "chromium" ||
+           s === "brave" || s === "brave-browser" || s === "brave-origin" ||
+           s === "microsoft-edge" || s === "opera" || s === "vivaldi" ||
+           s === "yandex-browser" || s === "yandex-browser-stable" || s === "ru.yandex.desktop.browser" ||
+           s === "firefox" || s === "firefox-esr" || s === "zen-browser" || s === "zen" ||
+           s === "waterfox" || s === "librewolf" || s === "floorp";
 }
 
 var KNOWN_TERMINALS = [
@@ -1026,6 +1031,37 @@ function matchToplevel(toplevel, appId, entry, desktopEntries, cachedCliApp) {
         return false;
     }
 
+    // Browser window matching:
+    // If this window is a standard web browser (google-chrome, yandex-browser, firefox, brave, etc.):
+    // It can ONLY match its corresponding browser dock item. It must NEVER be swallowed
+    // by web apps (omarchy-launch-webapp, chrome-*, etc.) or unrelated dock items!
+    if (isBrowserApp(appClassClean) || isBrowserApp(baseAppClass)) {
+        var isYandexTop = (appClassClean === "yandex-browser" || appClassClean === "yandex-browser-stable" || appClassClean === "ru.yandex.desktop.browser" || baseAppClass === "yandex-browser");
+        var isChromeTop = (appClassClean === "google-chrome" || appClassClean === "google-chrome-stable" || appClassClean === "chromium" || baseAppClass === "google-chrome");
+        var isBraveTop = (appClassClean === "brave" || appClassClean === "brave-browser" || appClassClean === "brave-origin" || baseAppClass === "brave");
+        var isFirefoxTop = (appClassClean === "firefox" || appClassClean === "firefox-esr" || baseAppClass === "firefox");
+        var isZenTop = (appClassClean === "zen-browser" || appClassClean === "zen" || baseAppClass === "zen");
+
+        if (cleanId === baseAppClass || cleanId === appClassClean) return true;
+        if (entry) {
+            var bEntryId = stripDesktop(entry.id || "").toLowerCase();
+            var bExec = getEntryExec(entry).toLowerCase().split(/\s+/)[0].split("/").pop();
+            if (bEntryId === baseAppClass || bEntryId === appClassClean || bExec === baseAppClass || bExec === appClassClean) return true;
+            if (isYandexTop && (bEntryId === "yandex-browser" || bEntryId === "ru.yandex.desktop.browser" || bExec === "yandex-browser-stable" || bExec === "yandex-browser")) return true;
+            if (isChromeTop && (bEntryId === "google-chrome" || bEntryId === "google-chrome-stable" || bEntryId === "chromium" || bExec === "google-chrome-stable" || bExec === "google-chrome" || bExec === "chromium")) return true;
+            if (isBraveTop && (bEntryId === "brave" || bEntryId === "brave-browser" || bEntryId === "brave-origin" || bExec === "brave" || bExec === "brave-browser" || bExec === "brave-origin")) return true;
+            if (isFirefoxTop && (bEntryId === "firefox" || bEntryId === "firefox-esr" || bExec === "firefox" || bExec === "firefox-esr")) return true;
+            if (isZenTop && (bEntryId === "zen-browser" || bEntryId === "zen" || bExec === "zen-browser" || bExec === "zen")) return true;
+        }
+        if (isYandexTop && (cleanId === "yandex-browser" || cleanId === "yandex-browser-stable" || cleanId === "ru.yandex.desktop.browser")) return true;
+        if (isChromeTop && (cleanId === "google-chrome" || cleanId === "google-chrome-stable" || cleanId === "chromium")) return true;
+        if (isBraveTop && (cleanId === "brave" || cleanId === "brave-browser" || cleanId === "brave-origin")) return true;
+        if (isFirefoxTop && (cleanId === "firefox" || cleanId === "firefox-esr")) return true;
+        if (isZenTop && (cleanId === "zen-browser" || cleanId === "zen")) return true;
+
+        return false;
+    }
+
     // Terminal CLI / TUI application matching:
     // If a window is running in a terminal emulator (e.g. foot, ghostty, kitty):
     if (isTerminalApp(appClass, null)) {
@@ -1077,16 +1113,6 @@ function matchToplevel(toplevel, appId, entry, desktopEntries, cachedCliApp) {
             if (stExec.indexOf("rungameid/" + steamGameId) !== -1 || stIcon === "steam_icon_" + steamGameId || stIcon === "steam_app_" + steamGameId) {
                 return true;
             }
-        }
-    }
-
-    // Yandex Browser matching
-    if (appClass === "yandex-browser" || appClass === "yandex-browser-stable") {
-        if (cleanId === "yandex-browser" || cleanId === "yandex-browser-stable" || cleanId === "ru.yandex.desktop.browser") return true;
-        if (entry) {
-            var yId = stripDesktop(entry.id || "").toLowerCase();
-            var yExec = getEntryExec(entry).toLowerCase().split(/\s+/)[0].split("/").pop();
-            if (yId === "yandex-browser" || yId === "ru.yandex.desktop.browser" || yExec === "yandex-browser-stable" || yExec === "yandex-browser") return true;
         }
     }
 
@@ -1159,12 +1185,12 @@ function matchToplevel(toplevel, appId, entry, desktopEntries, cachedCliApp) {
         }
     }
 
-    // 5. Window Title Match for web apps / webapp launchers
-    if (entry && getEntryExec(entry).toLowerCase().indexOf("omarchy-launch-webapp") !== -1) {
+    // 5. Window Title Match for web apps / webapp launchers (only for web app windows, never 1-2 letter substrings)
+    if (isWebAppWindow && entry && getEntryExec(entry).toLowerCase().indexOf("omarchy-launch-webapp") !== -1) {
         if (entry.name && title.length > 0) {
             var normName = normalizeKey(entry.name);
             var normTitle = normalizeKey(title);
-            if (normTitle.indexOf(normName) !== -1 || normName.indexOf(normTitle) !== -1) return true;
+            if (normName.length >= 3 && normTitle.indexOf(normName) !== -1) return true;
         }
     }
 
