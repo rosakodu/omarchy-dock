@@ -162,7 +162,8 @@ Item {
         if (desktopId) keys.push(String(desktopId))
         if (entry && entry.id) keys.push(String(entry.id))
         if (entry && entry.name) keys.push(String(entry.name))
-        if (entry && entry.exec) keys.push(String(entry.exec))
+        var entryExec = entry ? (entry.execString || entry.exec || "") : ""
+        if (entryExec) keys.push(String(entryExec))
         if (name) keys.push(String(name))
         
         var canonicalSet = []

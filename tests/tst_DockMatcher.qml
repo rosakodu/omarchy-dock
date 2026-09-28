@@ -480,5 +480,51 @@ TestCase {
         var resolvedShow = DockMatcher.resolveIcon({ icon: "omashow" }, "omashow", null)
         compare(resolvedShow, "file:///usr/share/icons/hicolor/scalable/apps/omashow.svg")
     }
+
+    function test_quickshellDesktopEntryExecString() {
+        // Quickshell's DesktopEntry objects expose `execString`, not `exec`.
+        // Issue #26: Verify that entries using execString resolve correctly in all paths.
+        var amazonEntry = {
+            id: "Amazon - Personal",
+            name: "Amazon - Personal",
+            icon: "amazon",
+            execString: "/home/user/chrome-app personal --app=\"https://www.amazon.ca/\""
+        }
+        var steamEntry = {
+            id: "steam_game_1700",
+            name: "Arx Fatalis",
+            icon: "steam_icon_1700",
+            execString: "steam steam://rungameid/1700"
+        }
+        var entries = [amazonEntry, steamEntry]
+
+        // 1. findEntry for Chrome Web App with subdomain (www.amazon.ca) via execString
+        var foundAmazon = DockMatcher.findEntry(entries, "chrome-www.amazon.ca__-Profile_3")
+        verify(foundAmazon !== null)
+        compare(foundAmazon.id, "Amazon - Personal")
+        compare(foundAmazon.icon, "amazon")
+
+        // 2. findEntry for Steam Game via execString
+        var foundSteam = DockMatcher.findEntry(entries, "steam_app_1700")
+        verify(foundSteam !== null)
+        compare(foundSteam.id, "steam_game_1700")
+
+        // 3. createDesktopEntryIndex byExec indexing via execString
+        var index = DockMatcher.createDesktopEntryIndex(entries)
+        verify(index.byExec["chrome-app"] !== undefined)
+        compare(index.byExec["chrome-app"].id, "Amazon - Personal")
+
+        // 4. buildDockItems: verify item.exec preserves execString
+        var top = {
+            appId: "chrome-www.amazon.ca__-Profile_3",
+            title: "Amazon.ca: Low Prices",
+            address: "0xdeadbeef"
+        }
+        var items = DockMatcher.buildDockItems([], [top], top, entries, null, {}, {}, 0, [])
+        compare(items.length, 1)
+        compare(items[0].desktopId, "Amazon - Personal")
+        compare(items[0].exec, "/home/user/chrome-app personal --app=\"https://www.amazon.ca/\"")
+    }
 }
+
 

@@ -779,7 +779,12 @@ Item {
     onEffectiveDockScreenChanged: {
         if (root.lastRemapScreen !== root.effectiveDockScreen) {
             root.lastRemapScreen = root.effectiveDockScreen
-            remapTimer.restart()
+            var target = DockSettings.dockScreenTarget(
+                root.visibleWorkspace,
+                root.visibilityMode,
+                root.visibilityOverride
+            )
+            if (target !== "all") remapTimer.restart()
         }
     }
 

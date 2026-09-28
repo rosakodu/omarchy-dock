@@ -64,7 +64,7 @@ function getAppMetadata(appId, allEntries) {
             var e = allEntries[i];
             if (!e) continue;
             var entryId = normalizeAppKey(e.id || e.desktopId || "");
-            var entryExec = normalizeAppKey(e.exec || "");
+            var entryExec = normalizeAppKey(e.execString || e.exec || "");
             var entryName = normalizeAppKey(e.name || "");
             var entryClass = normalizeAppKey(e.appClass || "");
 
