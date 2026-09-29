@@ -196,6 +196,23 @@ def hypr_cmd(sock_path, cmd):
     except Exception:
         return ""
 
+def raise_window(sock_path, c):
+    """Restack a window above the others so a focused float is not buried.
+
+    hl.dsp.focus changes the active window without touching stacking
+    order, so a floating window covered by another float stays covered
+    after a dock click. bring_to_top does the restack. Only floating
+    windows can be buried; tiled targets are skipped to keep layout
+    behavior identical.
+    """
+    if not c or not c.get("floating"):
+        return
+    addr = str(c.get("address", "")).lower()
+    if not addr:
+        return
+    hypr_cmd(sock_path, f'dispatch hl.dsp.window.bring_to_top({{ window = "address:{addr}" }})')
+
+
 def close_any_special(sock_path):
     try:
         monitors_raw = hypr_cmd(sock_path, "j/monitors")
@@ -687,6 +704,7 @@ def main():
             if "error" in res_focus.lower():
                 hypr_cmd(sock_path, f"dispatch focuswindow address:{addr}")
 
+            raise_window(sock_path, target_c)
             close_any_special(sock_path)
         else:
             # MINIMIZE target_c
@@ -704,6 +722,8 @@ def main():
                 res_focus = hypr_cmd(sock_path, cmd_focus)
                 if "error" in res_focus.lower():
                     hypr_cmd(sock_path, f"dispatch focuswindow address:{target_addr}")
+                raise_sibling = next((c for c in other_visible if str(c.get("address", "")).lower() == str(target_addr).lower()), None)
+                raise_window(sock_path, raise_sibling)
             else:
                 remaining = [
                     c for c in clients
@@ -744,12 +764,14 @@ def main():
             if "error" in res_focus.lower():
                 hypr_cmd(sock_path, f"dispatch focuswindow address:{addr}")
 
+            raise_window(sock_path, target_c)
             close_any_special(sock_path)
         else:
             cmd_focus = f'dispatch hl.dsp.focus({{ window = "address:{addr}" }})'
             res_focus = hypr_cmd(sock_path, cmd_focus)
             if "error" in res_focus.lower():
                 hypr_cmd(sock_path, f"dispatch focuswindow address:{addr}")
+            raise_window(sock_path, target_c)
         return
 
 if __name__ == "__main__":
