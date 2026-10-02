@@ -428,6 +428,17 @@ TestCase {
         compare(pinnedItems[0].isActive, true)
     }
 
+    function test_edgeWebAppPrefix() {
+        // Microsoft Edge names its web app windows "msedge-<site>__-<profile>"
+        compare(DockMatcher.extractChromeDomain("msedge-youtube.com__-Default"), "youtube.com")
+        compare(DockMatcher.extractChromeDomain("msedge-web.whatsapp.com__-Default"), "web.whatsapp.com")
+        compare(DockMatcher.extractChromeDomain("microsoft-edge"), "")
+
+        // Without the prefix only the raw window class was tried, so the icon fell back to Omarchy
+        var candidates = DockMatcher.getCandidates("", "", "msedge-x.com__-Default")
+        verify(candidates.indexOf("x") !== -1)
+    }
+
     function test_braveOriginWebAppMatching() {
         var braveOriginEntry = { id: "brave-origin.desktop", name: "Brave Origin", exec: "brave-origin %U", icon: "brave-origin" }
         var whatsappEntry = { id: "WhatsApp.desktop", name: "WhatsApp", exec: "omarchy-launch-webapp https://web.whatsapp.com/", icon: "whatsapp" }

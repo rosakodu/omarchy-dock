@@ -464,8 +464,8 @@ function extractChromeDomain(appClass) {
     if (s === "brave-browser" || s === "brave-origin" || s === "chromium-browser" || s === "chrome-browser" || s === "yandex-browser" || s === "yandex-browser-stable") {
         return "";
     }
-    if (s.indexOf("chrome-") === 0 || s.indexOf("chromium-") === 0 || s.indexOf("brave-") === 0 || s.indexOf("edge-") === 0) {
-        var dom = s.replace(/^(chrome|chromium|brave|edge)-/, "")
+    if (s.indexOf("chrome-") === 0 || s.indexOf("chromium-") === 0 || s.indexOf("brave-") === 0 || s.indexOf("edge-") === 0 || s.indexOf("msedge-") === 0) {
+        var dom = s.replace(/^(chrome|chromium|brave|msedge|edge)-/, "")
                    .replace(/__-.*$/, "")
                    .replace(/__.*$/, "")
                    .replace(/_\/.*$/, "")
