@@ -318,6 +318,25 @@ var FALLBACK_ICON_CANDIDATES = {
     "xdg-desktop-portal-gtk": ["document-open", "file-manager", "preferences-desktop"]
 };
 
+// omarchy-agent runs every coding agent (Claude Code, Codex, OpenCode...) in a
+// window of class "org.omarchy.agent", so the class alone doesn't say which
+// agent it is. The panel reads Omarchy's default agent and, when Omarchy's
+// agents panel ships a mark for it, that file's URL.
+var AGENT_ICON_CANDIDATES = {
+    "claude": ["claude", "claude-code", "claude-desktop", "anthropic"],
+    "codex": ["codex", "codex-desktop", "openai-codex"],
+    "gemini": ["gemini", "google-gemini", "gemini-cli"],
+    "copilot": ["github-copilot", "copilot"],
+    "cursor-agent": ["cursor-agent", "cursor"],
+    "opencode": ["opencode"],
+    "grok": ["grok"]
+};
+var _defaultAgent = { id: "", asset: "" };
+
+function setDefaultAgent(id, assetUrl) {
+    _defaultAgent = { id: String(id || "").trim().toLowerCase(), asset: assetUrl ? String(assetUrl) : "" };
+}
+
 function getCandidates(rawIcon, icon, appId) {
     var list = [];
     function add(c) {
@@ -405,6 +424,12 @@ function getCandidates(rawIcon, icon, appId) {
         add("org.kde.dolphin");
         add("file-manager");
         add("folder");
+    }
+
+    if (clean === "org.omarchy.agent" && _defaultAgent.id) {
+        var agentIcons = AGENT_ICON_CANDIDATES[_defaultAgent.id] || [_defaultAgent.id];
+        for (var ai = 0; ai < agentIcons.length; ai++) add(agentIcons[ai]);
+        if (_defaultAgent.asset) add(_defaultAgent.asset);
     }
 
     if (clean.indexOf("org.omarchy.") === 0 || clean.indexOf("omarchy-") === 0 || clean.indexOf("omarchy.") === 0) {

@@ -350,6 +350,34 @@ Item {
         onFileChanged: reload()
     }
 
+    // Omarchy's default coding agent, to give its org.omarchy.agent window the agent's icon
+    property string defaultAgent: ""
+    readonly property string defaultAgentAssetPath: root.defaultAgent.length > 0
+        ? Quickshell.shellDir + "/plugins/agents/assets/" + root.defaultAgent + ".svg"
+        : ""
+
+    function applyDefaultAgent(assetFound) {
+        DockModel.setDefaultAgent(root.defaultAgent, assetFound ? "file://" + root.defaultAgentAssetPath : "")
+        root.iconRevision++
+        root.updateDockItems()
+    }
+
+    FileView {
+        path: Quickshell.env("HOME") + "/.config/omarchy/defaults/agent"
+        watchChanges: true
+        printErrors: false
+        onLoaded: root.defaultAgent = text().trim().toLowerCase()
+        onLoadFailed: root.defaultAgent = ""
+        onFileChanged: reload()
+    }
+
+    FileView {
+        path: root.defaultAgentAssetPath
+        printErrors: false
+        onLoaded: root.applyDefaultAgent(true)
+        onLoadFailed: root.applyDefaultAgent(false)
+    }
+
     // Dock visibility, placement, and folder settings
     property string settingsPath: Quickshell.env("HOME") + "/.config/omarchy/dock-settings.json"
     property bool dockEnabled: true
