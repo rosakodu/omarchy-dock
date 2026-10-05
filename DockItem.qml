@@ -41,10 +41,57 @@ Item {
     signal minimizeRequested(var itemData, int targetIndex)
     signal dragStarted(int fromIndex)
     signal dragEnded()
+    signal windowListHoverChanged(bool hovered)
 
     readonly property int badgeCount: (root.itemData && typeof root.itemData.badgeCount === "number") ? root.itemData.badgeCount : 0
 
     readonly property bool isVertical: barPosition === "left" || barPosition === "right"
+
+    // The dock sits on the screen edge opposite the status bar.
+    readonly property string dockEdge: barPosition === "top" ? "bottom" : (barPosition === "bottom" ? "top" : (barPosition === "left" ? "right" : "left"))
+
+    // Hovering an app with several windows lists them by title, so the one to
+    // focus can be picked directly instead of by its dot in the capsule.
+    readonly property bool hasSeveralWindows: !!(root.itemData && !root.itemData.isStack && root.itemData.isRunning && root.itemData.toplevels && root.itemData.toplevels.length >= 2)
+    readonly property bool canShowWindowList: root.hasSeveralWindows && root.iconsReady && !root.isEditMode && !root.isAnyDragging
+    property bool windowListOpen: false
+    property bool windowListHovered: false
+
+    onCanShowWindowListChanged: if (!canShowWindowList) root.closeWindowList()
+
+    // Windows of one app often share a title prefix, so each row also names its workspace.
+    function windowWorkspaceName(toplevel) {
+        var values = Hyprland.toplevels ? Hyprland.toplevels.values : []
+        for (var i = 0; i < values.length; i++) {
+            if (values[i] && values[i].wayland === toplevel) {
+                var name = values[i].workspace ? String(values[i].workspace.name || "") : ""
+                return name.indexOf("special:") === 0 ? name.slice(8) : name
+            }
+        }
+        return ""
+    }
+
+    function closeWindowList() {
+        windowListOpenTimer.stop()
+        windowListCloseTimer.stop()
+        root.windowListOpen = false
+        if (root.windowListHovered) {
+            root.windowListHovered = false
+            root.windowListHoverChanged(false)
+        }
+    }
+
+    Timer {
+        id: windowListOpenTimer
+        interval: 350
+        onTriggered: if (mouseArea.containsMouse && root.canShowWindowList) root.windowListOpen = true
+    }
+
+    Timer {
+        id: windowListCloseTimer
+        interval: 300
+        onTriggered: if (!mouseArea.containsMouse && !root.windowListHovered) root.closeWindowList()
+    }
 
     width: slotSize
     height: slotSize
@@ -534,6 +581,8 @@ Item {
 
         onEntered: {
             mouseArea.forceActiveFocus()
+            windowListCloseTimer.stop()
+            if (root.canShowWindowList && !root.windowListOpen) windowListOpenTimer.restart()
         }
 
         Keys.onRightPressed: function(event) {
@@ -571,6 +620,7 @@ Item {
         }
 
         onPressed: function(mouse) {
+            root.closeWindowList()
             if (mouse.button === Qt.LeftButton) {
                 didDrag = false
                 didLongPress = false
@@ -682,6 +732,8 @@ Item {
         }
 
         onExited: {
+            windowListOpenTimer.stop()
+            if (root.windowListOpen) windowListCloseTimer.restart()
             longPressTimer.stop()
             root.isWheelScrolling = false
             previewResetTimer.restart()
@@ -765,6 +817,147 @@ Item {
                 clickEffectAnim.restart()
                 if (root.itemData && root.itemData.isStack) {
                     root.itemLeftClicked(root.itemData)
+                }
+            }
+        }
+    }
+
+    PopupWindow {
+        id: windowList
+        visible: root.windowListOpen && root.hasSeveralWindows
+        color: "transparent"
+        implicitWidth: windowListCard.width
+        implicitHeight: windowListCard.height
+
+        anchor {
+            window: root.QsWindow.window
+            adjustment: PopupAdjustment.Slide
+            edges: Edges.Top | Edges.Left
+            gravity: Edges.Bottom | Edges.Right
+            rect.width: 1
+            rect.height: 1
+
+            onAnchoring: {
+                var window = root.QsWindow.window
+                if (!window) return
+
+                var gap = 8
+                var popupWidth = windowList.implicitWidth
+                var popupHeight = windowList.implicitHeight
+                var localX = root.width / 2 - popupWidth / 2
+                var localY = -popupHeight - gap
+
+                if (root.dockEdge === "top") {
+                    localY = root.height + gap
+                } else if (root.dockEdge === "left") {
+                    localX = root.width + gap
+                    localY = root.height / 2 - popupHeight / 2
+                } else if (root.dockEdge === "right") {
+                    localX = -popupWidth - gap
+                    localY = root.height / 2 - popupHeight / 2
+                }
+
+                var point = window.contentItem.mapFromItem(root, localX, localY)
+                windowList.anchor.rect.x = Math.round(point.x)
+                windowList.anchor.rect.y = Math.round(point.y)
+            }
+        }
+
+        Rectangle {
+            id: windowListCard
+            width: windowListColumn.width + 12
+            height: windowListColumn.height + 12
+            radius: root.systemRounding
+            color: Color.popups.background
+            border.width: root.systemBorderSize
+            border.color: Color.composed("popups.border", "popups.border-alpha", Color.border, 0.45)
+
+            HoverHandler {
+                onHoveredChanged: {
+                    root.windowListHovered = hovered
+                    root.windowListHoverChanged(hovered)
+                    if (hovered) {
+                        windowListCloseTimer.stop()
+                    } else {
+                        windowListCloseTimer.restart()
+                    }
+                }
+            }
+
+            Column {
+                id: windowListColumn
+                x: 6
+                y: 6
+
+                Repeater {
+                    model: windowList.visible && root.itemData && root.itemData.toplevels ? root.itemData.toplevels : []
+
+                    Item {
+                        id: windowRow
+                        required property var modelData
+                        required property int index
+
+                        readonly property bool isShown: root.itemData && root.itemData.isActive && index === root.realActiveTopIndex
+                        readonly property string label: (modelData && modelData.title) ? modelData.title : (root.itemData ? (root.itemData.name || "") : "")
+                        readonly property string workspaceName: root.windowWorkspaceName(modelData)
+                        readonly property real workspaceWidth: workspaceName ? windowWorkspace.implicitWidth + 12 : 0
+
+                        width: Math.min(420, Math.max(160, windowTitle.implicitWidth + 30 + workspaceWidth))
+                        height: 30
+
+                        Rectangle {
+                            width: windowListColumn.width
+                            height: parent.height
+                            radius: Math.max(0, root.systemRounding - 4)
+                            color: windowRowMouse.containsMouse ? Util.alpha(Color.accent, 0.18) : "transparent"
+                        }
+
+                        Text {
+                            x: 8
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: windowRow.isShown ? "●" : ""
+                            color: Color.accent
+                            font.family: Style.font.family
+                            font.pixelSize: 8
+                        }
+
+                        Text {
+                            id: windowTitle
+                            x: 22
+                            width: windowListColumn.width - 30 - windowRow.workspaceWidth
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: windowRow.label
+                            elide: Text.ElideRight
+                            color: windowRow.isShown ? Color.accent : Color.composed("popups.text", "popups.text-alpha", Color.text, 0.9)
+                            font.family: Style.font.family
+                            font.pixelSize: 12
+                        }
+
+                        Text {
+                            id: windowWorkspace
+                            x: windowListColumn.width - implicitWidth - 8
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: windowRow.workspaceName !== ""
+                            text: windowRow.workspaceName
+                            color: Color.composed("popups.text", "popups.text-alpha", Color.text, 0.5)
+                            font.family: Style.font.family
+                            font.pixelSize: 11
+                        }
+
+                        MouseArea {
+                            id: windowRowMouse
+                            width: windowListColumn.width
+                            height: parent.height
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                var item = root.itemData
+                                var target = windowRow.index
+                                root.closeWindowList()
+                                root.restoreOrLaunchRequested(item, target)
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -36,6 +36,7 @@ A modern, highly polished, and fully native application dock plugin for **Omarch
 | **Minimize Window** | `Right-Click` *(on App)* | Minimizes visible application windows to special minimized workspace. |
 | **Launch Duplicate** | `Middle-Click` / `Tab` | Instantly spawns a new duplicate instance of the application with immediate focus. |
 | **Cycle Duplicates** | `Mouse Wheel` / `←` `→` Arrow Keys | Cycles through duplicate windows via 3-slot sliding viewport (original dash `━` and duplicate dots `•`). |
+| **Pick a Window** | `Hover` *(on App with 2+ windows)* | Lists the app's windows by title and workspace; click one to focus or restore it. |
 | **Open Widget Panel** | `Left-Click` *(on Widget)* | Opens the hosted system widget panel (Audio, Wi-Fi, BT, Power, Monitor, etc.) centered on screen. |
 | **Enter Edit Mode** | `Long-Press` *(450ms)* | Activates iOS-style physical wobble mode to reorder apps, toggle pins, remove widgets, or dissolve folders. |
 | **Reorder & Folders** | `Drag & Drop` | Drag along the rail to reorder. Drag one icon onto another to create a folder (App Stack). |
