@@ -21,6 +21,7 @@ BarWidget {
   property string visibleWorkspace: "all"
   property bool showFolderTitles: true
   property bool showBadges: true
+  property bool showBorder: true
   property bool widgetsEnabled: true
   readonly property bool settingsOpen: settingsWindow.open
   property bool isSavingSettings: false
@@ -83,6 +84,9 @@ BarWidget {
         if (s && s.showBadges !== undefined) {
           root.showBadges = (s.showBadges === true)
         }
+        if (s && s.showBorder !== undefined) {
+          root.showBorder = (s.showBorder === true)
+        }
         if (s && s.widgetsEnabled !== undefined) {
           root.widgetsEnabled = (s.widgetsEnabled === true)
         }
@@ -121,6 +125,7 @@ BarWidget {
     s.visibleWorkspace = root.visibleWorkspace
     s.showFolderTitles = root.showFolderTitles
     s.showBadges = root.showBadges
+    s.showBorder = root.showBorder
     s.widgetsEnabled = root.widgetsEnabled
     s.appMenuPosition = root.appMenuPosition || s.appMenuPosition || "left"
     s.widgetPosition = root.widgetPosition || s.widgetPosition || "right"
@@ -257,6 +262,14 @@ BarWidget {
     saveSettings()
     if (root.bar && typeof root.bar.run === "function") {
       root.bar.run("omarchy-shell rosakodu.dock setShowBadges " + (val ? "true" : "false"))
+    }
+  }
+
+  function setShowBorder(val) {
+    root.showBorder = val
+    saveSettings()
+    if (root.bar && typeof root.bar.run === "function") {
+      root.bar.run("omarchy-shell rosakodu.dock setShowBorder " + (val ? "true" : "false"))
     }
   }
 
@@ -845,6 +858,84 @@ BarWidget {
             cursorShape: Qt.PointingHandCursor
             onClicked: {
               root.setShowBadges(!root.showBadges)
+            }
+          }
+        }
+
+        // Toggle Border Row
+        Rectangle {
+          id: borderRow
+          Layout.fillWidth: true
+          height: 42
+          radius: 8
+          color: toggleBorderMouse.containsMouse ? Style.hoverFillFor(Color.popups.text, Color.accent) : "transparent"
+          Behavior on color { ColorAnimation { duration: 120 } }
+
+          RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 10
+            anchors.rightMargin: 10
+            spacing: 8
+
+            ColumnLayout {
+              Layout.fillWidth: true
+              Layout.alignment: Qt.AlignVCenter
+              spacing: 1
+
+              Text {
+                Layout.fillWidth: true
+                text: "Dock border"
+                textFormat: Text.PlainText
+                font.family: Style.font.family
+                font.pixelSize: 12
+                font.bold: true
+                color: Color.popups.text
+                elide: Text.ElideRight
+              }
+
+              Text {
+                Layout.fillWidth: true
+                text: "Show active Hyprland window border"
+                textFormat: Text.PlainText
+                font.family: Style.font.family
+                font.pixelSize: 10
+                color: Color.muted
+                elide: Text.ElideRight
+              }
+            }
+
+            // Custom Smooth Toggle Switch
+            Rectangle {
+              id: switchBorderTrack
+              Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
+              Layout.preferredWidth: 36
+              Layout.preferredHeight: 20
+              width: 36
+              height: 20
+              radius: 10
+              color: root.showBorder ? Color.accent : Qt.rgba(Color.popups.text.r, Color.popups.text.g, Color.popups.text.b, 0.25)
+              Behavior on color { ColorAnimation { duration: 180 } }
+
+              Rectangle {
+                id: switchBorderThumb
+                width: 14
+                height: 14
+                radius: 7
+                anchors.verticalCenter: parent.verticalCenter
+                x: root.showBorder ? (switchBorderTrack.width - width - 3) : 3
+                color: root.showBorder ? Color.background : Color.popups.text
+                Behavior on x { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+              }
+            }
+          }
+
+          MouseArea {
+            id: toggleBorderMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+              root.setShowBorder(!root.showBorder)
             }
           }
         }

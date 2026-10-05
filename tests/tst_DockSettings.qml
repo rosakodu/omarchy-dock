@@ -10,6 +10,15 @@ TestCase {
         compare(settings.visibilityMode, "always")
         compare(settings.overlayMode, false)
         compare(settings.visibleWorkspace, "all")
+        compare(settings.showBorder, true)
+    }
+
+    function test_showBorderNormalization() {
+        compare(DockSettings.normalize({ showBorder: false }).showBorder, false)
+        compare(DockSettings.normalize({ showBorder: "false" }).showBorder, false)
+        compare(DockSettings.normalize({ showBorder: true }).showBorder, true)
+        compare(DockSettings.normalize({ showBorder: "true" }).showBorder, true)
+        compare(DockSettings.normalize({}).showBorder, true)
     }
 
     function test_legacyAutohideMigration_data() {

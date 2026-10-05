@@ -70,6 +70,7 @@ You can customize options directly via the `···` status bar widget or in `~/.
   "visibleWorkspace": "all",
   "showFolderTitles": true,
   "showBadges": true,
+  "showBorder": true,
   "widgetsEnabled": true,
   "widgetPosition": "left",
   "dockWidgets": [
@@ -77,6 +78,8 @@ You can customize options directly via the `···` status bar widget or in `~/.
   ]
 }
 ```
+
+`showBorder` toggles the active Hyprland border around the dock (`true` by default). Set to `false` for a completely borderless dock.
 
 `visibilityMode` accepts `always`, `hover`, `keybind`, or `hybrid`. `overlayMode` uses the
 native v1.5.0 implementation: `false` reserves screen space and `true` floats

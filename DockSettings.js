@@ -40,12 +40,18 @@ function normalizeVisibleWorkspace(value) {
     return workspace === "" || workspace.toLowerCase() === "all" ? "all" : workspace
 }
 
+function normalizeShowBorder(value) {
+    if (value === undefined || value === null) return true
+    return value === true || value === "true" || value === 1 || value === "1"
+}
+
 function normalize(raw) {
     var settings = raw && typeof raw === "object" ? raw : {}
     return {
         visibilityMode: normalizeVisibilityMode(settings.visibilityMode, settings.autohide),
         overlayMode: normalizeOverlayMode(settings.overlayMode, settings.spaceMode),
-        visibleWorkspace: normalizeVisibleWorkspace(settings.visibleWorkspace)
+        visibleWorkspace: normalizeVisibleWorkspace(settings.visibleWorkspace),
+        showBorder: normalizeShowBorder(settings.showBorder)
     }
 }
 
