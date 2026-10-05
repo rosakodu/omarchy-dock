@@ -119,6 +119,9 @@ Item {
             root.windowListHovered = false
             root.windowListHoverChanged(false)
         }
+        if (!mouseArea.containsMouse) {
+            root.previewTopIndex = -1
+        }
     }
 
     Timer {
@@ -441,7 +444,7 @@ Item {
         interval: 1500
         repeat: false
         onTriggered: {
-            if (!mouseArea.containsMouse) {
+            if (!mouseArea.containsMouse && !root.windowListHovered && !root.windowListOpen) {
                 root.previewTopIndex = -1
             }
         }
@@ -639,6 +642,20 @@ Item {
             }
         }
 
+        Keys.onDownPressed: function(event) {
+            if (root.itemData && !root.itemData.isStack && root.itemData.isRunning && root.itemData.toplevels && root.itemData.toplevels.length >= 2) {
+                root.cycleDuplicate(true)
+                event.accepted = true
+            }
+        }
+
+        Keys.onUpPressed: function(event) {
+            if (root.itemData && !root.itemData.isStack && root.itemData.isRunning && root.itemData.toplevels && root.itemData.toplevels.length >= 2) {
+                root.cycleDuplicate(false)
+                event.accepted = true
+            }
+        }
+
         Keys.onTabPressed: function(event) {
             if (root.itemData) {
                 clickEffectAnim.restart()
@@ -652,10 +669,13 @@ Item {
             if (root.itemData && !root.itemData.isStack && root.itemData.isRunning && root.itemData.toplevels && root.itemData.toplevels.length >= 2 && root.previewTopIndex >= 0) {
                 var top = root.itemData.toplevels[root.previewTopIndex]
                 if (top && typeof top.activate === "function") {
-                    top.activate()
-                    root.previewTopIndex = -1
-                    event.accepted = true
+                    try { top.activate() } catch (e) {}
                 }
+                var targetIdx = root.previewTopIndex
+                root.previewTopIndex = -1
+                root.restoreOrLaunchRequested(root.itemData, targetIdx)
+                root.closeWindowList()
+                event.accepted = true
             }
         }
 
@@ -776,7 +796,9 @@ Item {
             if (root.windowListOpen) windowListCloseTimer.restart()
             longPressTimer.stop()
             root.isWheelScrolling = false
-            previewResetTimer.restart()
+            if (!root.windowListHovered && !root.windowListOpen) {
+                previewResetTimer.restart()
+            }
         }
 
         onCanceled: {
@@ -906,11 +928,25 @@ Item {
         Rectangle {
             id: windowListCard
             width: windowListColumn.width + 12
-            height: windowListColumn.height + 12
+            height: Math.min(windowListColumn.height + 12, 420)
             radius: root.systemRounding
             color: Color.popups.background
             border.width: root.systemBorderSize
             border.color: Color.composed("popups.border", "popups.border-alpha", Color.border, 0.45)
+            clip: true
+
+            WheelHandler {
+                acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                onWheel: function(event) {
+                    if (root.itemData && !root.itemData.isStack && root.itemData.isRunning && root.itemData.toplevels && root.itemData.toplevels.length >= 2) {
+                        if (event.angleDelta.y < 0 || event.angleDelta.x > 0) {
+                            root.cycleDuplicate(true)
+                        } else if (event.angleDelta.y > 0 || event.angleDelta.x < 0) {
+                            root.cycleDuplicate(false)
+                        }
+                    }
+                }
+            }
 
             HoverHandler {
                 onHoveredChanged: {
@@ -924,86 +960,133 @@ Item {
                 }
             }
 
-            Column {
-                id: windowListColumn
+            Flickable {
+                id: windowListFlickable
                 x: 6
                 y: 6
+                width: windowListColumn.width
+                height: windowListCard.height - 12
+                contentWidth: windowListColumn.width
+                contentHeight: windowListColumn.height
+                boundsBehavior: Flickable.StopAtBounds
+                clip: true
 
-                Repeater {
-                    model: (root.itemData && root.itemData.toplevels) ? root.itemData.toplevels : []
-
-                    Item {
-                        id: windowRow
-                        required property var modelData
-                        required property int index
-
-                        readonly property bool isShown: root.itemData && root.itemData.isActive && index === root.realActiveTopIndex
-                        readonly property string label: (modelData && modelData.title) ? modelData.title : (root.itemData ? (root.itemData.name || "") : "")
-                        readonly property string workspaceName: root.windowWorkspaceName(modelData)
-                        readonly property real workspaceWidth: workspaceName ? windowWorkspace.implicitWidth + 12 : 0
-
-                        width: Math.min(420, Math.max(160, windowTitle.implicitWidth + 30 + workspaceWidth))
-                        height: 30
-
-                        Rectangle {
-                            width: windowListColumn.width
-                            height: parent.height
-                            radius: Math.max(0, root.systemRounding - 4)
-                            color: windowRowMouse.containsMouse ? Util.alpha(Color.accent, 0.18) : "transparent"
+                Connections {
+                    target: root
+                    function onEffectiveTopIndexChanged() {
+                        if (windowListFlickable.contentHeight > windowListFlickable.height) {
+                            var itemY = root.effectiveTopIndex * 30
+                            if (itemY < windowListFlickable.contentY) {
+                                windowListFlickable.contentY = itemY
+                            } else if (itemY + 30 > windowListFlickable.contentY + windowListFlickable.height) {
+                                windowListFlickable.contentY = itemY + 30 - windowListFlickable.height
+                            }
                         }
+                    }
+                }
 
-                        Text {
-                            x: 8
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: windowRow.isShown ? "●" : ""
-                            color: Color.accent
-                            font.family: Style.font.family
-                            font.pixelSize: 8
-                        }
+                Column {
+                    id: windowListColumn
 
-                        Text {
-                            id: windowTitle
-                            x: 22
-                            width: windowListColumn.width - 30 - windowRow.workspaceWidth
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: windowRow.label
-                            elide: Text.ElideRight
-                            color: windowRow.isShown ? Color.accent : Color.composed("popups.text", "popups.text-alpha", Color.text, 0.9)
-                            font.family: Style.font.family
-                            font.pixelSize: 12
-                        }
+                    Repeater {
+                        model: (root.itemData && root.itemData.toplevels) ? root.itemData.toplevels : []
 
-                        Text {
-                            id: windowWorkspace
-                            x: windowListColumn.width - implicitWidth - 8
-                            anchors.verticalCenter: parent.verticalCenter
-                            visible: windowRow.workspaceName !== ""
-                            text: windowRow.workspaceName
-                            color: Color.composed("popups.text", "popups.text-alpha", Color.text, 0.5)
-                            font.family: Style.font.family
-                            font.pixelSize: 11
-                        }
+                        Item {
+                            id: windowRow
+                            required property var modelData
+                            required property int index
 
-                        MouseArea {
-                            id: windowRowMouse
-                            width: windowListColumn.width
-                            height: parent.height
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                var item = root.itemData
-                                var target = windowRow.index
-                                var top = windowRow.modelData
+                            readonly property bool isSelected: index === root.effectiveTopIndex
+                            readonly property bool isOriginalApp: index === 0
+                            readonly property string label: (modelData && modelData.title) ? modelData.title : (root.itemData ? (root.itemData.name || "") : "")
+                            readonly property string workspaceName: root.windowWorkspaceName(modelData)
+                            readonly property real workspaceWidth: workspaceName ? windowWorkspace.implicitWidth + 12 : 0
 
-                                if (top && typeof top.activate === "function") {
-                                    try {
-                                        top.activate()
-                                    } catch (e) {}
+                            width: Math.min(420, Math.max(160, windowTitle.implicitWidth + 34 + workspaceWidth))
+                            height: 30
+
+                            Rectangle {
+                                width: windowListColumn.width
+                                height: parent.height
+                                radius: Math.max(0, root.systemRounding - 4)
+                                color: windowRowMouse.containsMouse
+                                    ? Util.alpha(Color.accent, 0.22)
+                                    : (windowRow.isSelected ? Util.alpha(Color.accent, 0.12) : "transparent")
+                                Behavior on color { ColorAnimation { duration: 120 } }
+                            }
+
+                            // Duplicate Status Capsule Indicator (Synchronized with capsule under the dock icon)
+                            Rectangle {
+                                id: statusIndicator
+                                x: 8
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: windowRow.isOriginalApp ? 9.0 : (windowRow.isSelected ? 4.0 : 2.5)
+                                height: 2.5
+                                radius: 1.25
+                                color: windowRow.isSelected
+                                    ? Color.accent
+                                    : Color.composed("popups.text", "popups.text-alpha", Color.text, windowRow.isOriginalApp ? 0.45 : 0.28)
+                                antialiasing: true
+                                smooth: true
+
+                                Behavior on width { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+                                Behavior on color { ColorAnimation { duration: 120 } }
+                            }
+
+                            Text {
+                                id: windowTitle
+                                x: 23
+                                width: windowListColumn.width - 31 - windowRow.workspaceWidth
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: windowRow.label
+                                elide: Text.ElideRight
+                                color: windowRow.isSelected
+                                    ? Color.accent
+                                    : (windowRowMouse.containsMouse ? Color.text : Color.composed("popups.text", "popups.text-alpha", Color.text, 0.9))
+                                font.family: Style.font.family
+                                font.pixelSize: 12
+                                font.weight: windowRow.isSelected ? Font.Medium : Font.Normal
+                            }
+
+                            Text {
+                                id: windowWorkspace
+                                x: windowListColumn.width - implicitWidth - 8
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: windowRow.workspaceName !== ""
+                                text: windowRow.workspaceName
+                                color: windowRow.isSelected
+                                    ? Util.alpha(Color.accent, 0.85)
+                                    : Color.composed("popups.text", "popups.text-alpha", Color.text, 0.5)
+                                font.family: Style.font.family
+                                font.pixelSize: 11
+                            }
+
+                            MouseArea {
+                                id: windowRowMouse
+                                width: windowListColumn.width
+                                height: parent.height
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+
+                                onEntered: {
+                                    root.previewTopIndex = windowRow.index
                                 }
-                                root.restoreOrLaunchRequested(item, target)
-                                Qt.callLater(function() {
-                                    root.closeWindowList()
-                                })
+
+                                onClicked: {
+                                    var item = root.itemData
+                                    var target = windowRow.index
+                                    var top = windowRow.modelData
+
+                                    if (top && typeof top.activate === "function") {
+                                        try {
+                                            top.activate()
+                                        } catch (e) {}
+                                    }
+                                    root.restoreOrLaunchRequested(item, target)
+                                    Qt.callLater(function() {
+                                        root.closeWindowList()
+                                    })
+                                }
                             }
                         }
                     }
