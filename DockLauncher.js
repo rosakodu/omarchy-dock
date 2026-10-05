@@ -97,19 +97,27 @@ function launchApp(shell, itemData, util) {
     }
 
     // 2. Fallback: Launch via gtk-launch or direct argv
-    var target = canonicalId ? (canonicalId + ".desktop") : (cleanId ? (cleanId + ".desktop") : "");
+    var target = "";
+    var altTarget = "";
+    if (canonicalId) {
+        var cLower = canonicalId.toLowerCase();
+        if (cLower.slice(-8) === ".desktop") {
+            if (cLower === "org.telegram.desktop") {
+                target = canonicalId + ".desktop";
+            } else {
+                target = canonicalId;
+                altTarget = canonicalId + ".desktop";
+            }
+        } else {
+            target = canonicalId + ".desktop";
+        }
+    } else if (cleanId) {
+        target = cleanId + ".desktop";
+    }
+
     var argv = parseDesktopExec(itemData.exec);
     if (argv.length === 0 && cleanId) {
         argv = [cleanId];
-    }
-
-    if (util && typeof util.execArgv === "function") {
-        if (target) {
-            util.execArgv(["uwsm-app", "--", "gtk-launch", target]);
-        } else if (argv.length > 0) {
-            util.execArgv(["uwsm-app", "--"].concat(argv));
-        }
-        return;
     }
 
     var fallbackCmd = "";
@@ -126,6 +134,9 @@ function launchApp(shell, itemData, util) {
     var cmd = "";
     if (target) {
         cmd = "uwsm-app -- gtk-launch " + escapeShellArg(target);
+        if (altTarget) {
+            cmd += " || (uwsm-app -- gtk-launch " + escapeShellArg(altTarget) + ")";
+        }
         if (fallbackCmd) {
             cmd += " || (" + fallbackCmd + ")";
         }
@@ -135,5 +146,15 @@ function launchApp(shell, itemData, util) {
 
     if (cmd && util && typeof util.execDetached === "function") {
         util.execDetached(cmd);
+        return;
+    }
+
+    if (util && typeof util.execArgv === "function") {
+        if (target) {
+            util.execArgv(["uwsm-app", "--", "gtk-launch", target]);
+        } else if (argv.length > 0) {
+            util.execArgv(["uwsm-app", "--"].concat(argv));
+        }
+        return;
     }
 }

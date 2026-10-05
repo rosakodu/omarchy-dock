@@ -608,7 +608,7 @@ Item {
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
         cursorShape: (root.isDragging || mouseArea.drag.active || root.dockDragActiveIndex >= 0 || root.isAnyDragging || root.isWheelScrolling) ? Qt.BlankCursor : (root.isEditMode ? Qt.PointingHandCursor : Qt.ArrowCursor)
 
-        drag.target: dragOffset
+        drag.target: (mouseArea.pressedButtons & Qt.LeftButton) ? dragOffset : null
         drag.axis: root.isVertical ? Drag.YAxis : Drag.XAxis
         // Allow free mouse movement across the full screen while dragging along the rail
         drag.minimumX: -99999
@@ -681,9 +681,9 @@ Item {
 
         onPressed: function(mouse) {
             root.closeWindowList()
+            didDrag = false
+            didLongPress = false
             if (mouse.button === Qt.LeftButton) {
-                didDrag = false
-                didLongPress = false
                 longPressTimer.restart()
             } else if (mouse.button === Qt.RightButton) {
                 if (root.isEditMode) {
@@ -948,6 +948,18 @@ Item {
                 }
             }
 
+            TapHandler {
+                acceptedButtons: Qt.MiddleButton
+                onTapped: {
+                    if (root.itemData && !root.itemData.isStack) {
+                        clickEffectAnim.restart()
+                        root.closeWindowList()
+                        DockModel.setPendingCliHint(root.itemData.appId || root.itemData.desktopId || "", (root.parentDock && root.parentDock.knownWindows) ? root.parentDock.knownWindows : [])
+                        DockModel.launchApp(root.shell, root.itemData, Util)
+                    }
+                }
+            }
+
             HoverHandler {
                 onHoveredChanged: {
                     root.windowListHovered = hovered
@@ -1067,15 +1079,26 @@ Item {
                                 height: parent.height
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
+                                acceptedButtons: Qt.LeftButton | Qt.MiddleButton
 
                                 onEntered: {
                                     root.previewTopIndex = windowRow.index
                                 }
 
-                                onClicked: {
+                                onClicked: function(mouse) {
                                     var item = root.itemData
                                     var target = windowRow.index
                                     var top = windowRow.modelData
+
+                                    if (mouse.button === Qt.MiddleButton) {
+                                        if (item && !item.isStack) {
+                                            clickEffectAnim.restart()
+                                            root.closeWindowList()
+                                            DockModel.setPendingCliHint(item.appId || item.desktopId || "", (root.parentDock && root.parentDock.knownWindows) ? root.parentDock.knownWindows : [])
+                                            DockModel.launchApp(root.shell, item, Util)
+                                        }
+                                        return
+                                    }
 
                                     if (top && typeof top.activate === "function") {
                                         try {
