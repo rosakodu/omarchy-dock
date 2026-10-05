@@ -58,6 +58,7 @@ var getBadgeInfo = Matcher.getBadgeInfo;
 var buildDockItems = Matcher.buildDockItems;
 var setPendingCliHint = Matcher.setPendingCliHint;
 var setDetectedCliApps = Matcher.setDetectedCliApps;
+var setDefaultAgent = Matcher.setDefaultAgent;
 var setDiskIcons = Matcher.setDiskIcons;
 var getDiskIcon = Matcher.getDiskIcon;
 

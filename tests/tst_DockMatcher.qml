@@ -439,6 +439,26 @@ TestCase {
         verify(candidates.indexOf("x") !== -1)
     }
 
+    function test_omarchyAgentIcon() {
+        // Without a default agent the window keeps the generic Omarchy candidates
+        DockMatcher.setDefaultAgent("", "")
+        var plain = DockMatcher.getCandidates("", "", "org.omarchy.agent")
+        verify(plain.indexOf("claude") === -1)
+        verify(plain.indexOf("omarchy") !== -1)
+
+        // The default agent's theme icons come before the bundled mark, and both before the Omarchy logo
+        var asset = "file:///usr/share/omarchy/shell/plugins/agents/assets/claude.svg"
+        DockMatcher.setDefaultAgent("claude", asset)
+        var cands = DockMatcher.getCandidates("", "", "org.omarchy.agent")
+        verify(cands.indexOf("claude") !== -1)
+        verify(cands.indexOf("claude") < cands.indexOf(asset))
+        verify(cands.indexOf(asset) < cands.indexOf("omarchy"))
+
+        // Other windows are untouched
+        verify(DockMatcher.getCandidates("", "", "org.omarchy.cliamp").indexOf("claude") === -1)
+        DockMatcher.setDefaultAgent("", "")
+    }
+
     function test_braveOriginWebAppMatching() {
         var braveOriginEntry = { id: "brave-origin.desktop", name: "Brave Origin", exec: "brave-origin %U", icon: "brave-origin" }
         var whatsappEntry = { id: "WhatsApp.desktop", name: "WhatsApp", exec: "omarchy-launch-webapp https://web.whatsapp.com/", icon: "whatsapp" }
