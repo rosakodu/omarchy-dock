@@ -63,9 +63,49 @@ Item {
     function windowWorkspaceName(toplevel) {
         var values = Hyprland.toplevels ? Hyprland.toplevels.values : []
         for (var i = 0; i < values.length; i++) {
-            if (values[i] && values[i].wayland === toplevel) {
+            if (values[i] && (values[i] === toplevel || values[i].wayland === toplevel)) {
                 var name = values[i].workspace ? String(values[i].workspace.name || "") : ""
                 return name.indexOf("special:") === 0 ? name.slice(8) : name
+            }
+        }
+        if (toplevel) {
+            var topTitle = String(toplevel.title || "")
+            var topApp = String(toplevel.appId || "").toLowerCase()
+            for (var j = 0; j < values.length; j++) {
+                var cand = values[j]
+                if (cand && String(cand.title || "") === topTitle) {
+                    var candClass = String(cand.class || cand.initialClass || "").toLowerCase()
+                    if (!topApp || candClass === topApp || topApp.indexOf(candClass) >= 0 || candClass.indexOf(topApp) >= 0) {
+                        var cName = cand.workspace ? String(cand.workspace.name || "") : ""
+                        return cName.indexOf("special:") === 0 ? cName.slice(8) : cName
+                    }
+                }
+            }
+        }
+        return ""
+    }
+
+    function windowAddress(toplevel) {
+        var values = Hyprland.toplevels ? Hyprland.toplevels.values : []
+        for (var i = 0; i < values.length; i++) {
+            if (values[i] && (values[i] === toplevel || values[i].wayland === toplevel)) {
+                var addr = String(values[i].address || "")
+                if (!addr) return ""
+                return addr.indexOf("0x") === 0 ? addr : ("0x" + addr)
+            }
+        }
+        if (toplevel) {
+            var topTitle = String(toplevel.title || "")
+            var topApp = String(toplevel.appId || "").toLowerCase()
+            for (var j = 0; j < values.length; j++) {
+                var cand = values[j]
+                if (cand && String(cand.title || "") === topTitle) {
+                    var candClass = String(cand.class || cand.initialClass || "").toLowerCase()
+                    if (!topApp || candClass === topApp || topApp.indexOf(candClass) >= 0 || candClass.indexOf(topApp) >= 0) {
+                        var cAddr = String(cand.address || "")
+                        if (cAddr) return cAddr.indexOf("0x") === 0 ? cAddr : ("0x" + cAddr)
+                    }
+                }
             }
         }
         return ""
@@ -890,7 +930,7 @@ Item {
                 y: 6
 
                 Repeater {
-                    model: windowList.visible && root.itemData && root.itemData.toplevels ? root.itemData.toplevels : []
+                    model: (root.itemData && root.itemData.toplevels) ? root.itemData.toplevels : []
 
                     Item {
                         id: windowRow
@@ -953,8 +993,17 @@ Item {
                             onClicked: {
                                 var item = root.itemData
                                 var target = windowRow.index
-                                root.closeWindowList()
+                                var top = windowRow.modelData
+
+                                if (top && typeof top.activate === "function") {
+                                    try {
+                                        top.activate()
+                                    } catch (e) {}
+                                }
                                 root.restoreOrLaunchRequested(item, target)
+                                Qt.callLater(function() {
+                                    root.closeWindowList()
+                                })
                             }
                         }
                     }

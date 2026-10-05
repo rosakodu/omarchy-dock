@@ -1500,6 +1500,20 @@ function hyprAddressFor(toplevel, hyprToplevels) {
             return addr.indexOf("0x") === 0 ? addr : ("0x" + addr);
         }
     }
+    var topTitle = String(toplevel.title || "");
+    var topApp = String(toplevel.appId || "").toLowerCase();
+    if (topTitle || topApp) {
+        for (var j = 0; j < hyprToplevels.length; j++) {
+            var cand = hyprToplevels[j];
+            if (!cand) continue;
+            var candTitle = String(cand.title || "");
+            var candClass = String(cand.class || cand.initialClass || "").toLowerCase();
+            if (candTitle === topTitle && (candClass === topApp || !topApp || !candClass)) {
+                var cAddr = String(cand.address || "");
+                if (cAddr) return cAddr.indexOf("0x") === 0 ? cAddr : ("0x" + cAddr);
+            }
+        }
+    }
     return "";
 }
 

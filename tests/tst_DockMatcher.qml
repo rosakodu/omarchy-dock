@@ -298,6 +298,16 @@ TestCase {
         compare(DockMatcher.hyprAddressFor(null, null), "")
     }
 
+    function test_hyprAddressForFallsBackToTitleAndClass() {
+        var waylandWindow = { title: "Editor - main.js", appId: "code" }
+        // Different wayland object identity, but matching title and class
+        var hyprToplevels = [
+            { address: "0x111222", title: "Terminal", class: "foot", wayland: {} },
+            { address: "0x333444", title: "Editor - main.js", class: "code", wayland: {} }
+        ]
+        compare(DockMatcher.hyprAddressFor(waylandWindow, hyprToplevels), "0x333444")
+    }
+
     function test_cleanWindowAppId() {
         compare(DockMatcher.cleanWindowAppId("SyncTERM 1.8 - Wayland"), "SyncTERM")
         compare(DockMatcher.cleanWindowAppId("SyncTERM 1.8"), "SyncTERM")

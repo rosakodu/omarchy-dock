@@ -1899,7 +1899,11 @@ Item {
     // only until Hyprland reshuffles. Name the window instead, and fall back to
     // the position only when the address cannot be resolved.
     function targetWindowArg(itemData, targetIndex) {
-        if (!itemData || typeof targetIndex !== "number" || targetIndex < 0) return ""
+        if (!itemData) return ""
+        if (typeof targetIndex === "string" && targetIndex.indexOf("0x") === 0) {
+            return targetIndex
+        }
+        if (typeof targetIndex !== "number" || targetIndex < 0) return ""
         var tops = itemData.toplevels || []
         if (targetIndex >= tops.length) return ""
         var hyprTops = (typeof Hyprland !== "undefined" && Hyprland.toplevels && Hyprland.toplevels.values)
