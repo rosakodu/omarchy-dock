@@ -119,6 +119,21 @@ var KNOWN_APP_DEFAULTS = {
     "zoom": { id: "Zoom", icon: "zoom", rawIcon: "zoom", name: "Zoom" },
     "cursor": { id: "Cursor", icon: "cursor", rawIcon: "cursor", name: "Cursor" },
     "chrome-appgkjomdnhhdolojlpkjafpklojikld-default": { id: "Cursor", icon: "cursor", rawIcon: "cursor", name: "Cursor" },
+    "outlook": { id: "Outlook", icon: "ms-outlook", rawIcon: "ms-outlook", name: "Outlook" },
+    "outlook.office.com": { id: "Outlook", icon: "ms-outlook", rawIcon: "ms-outlook", name: "Outlook" },
+    "outlook.live.com": { id: "Outlook", icon: "ms-outlook", rawIcon: "ms-outlook", name: "Outlook" },
+    "ms-outlook": { id: "Outlook", icon: "ms-outlook", rawIcon: "ms-outlook", name: "Outlook" },
+    "office": { id: "Microsoft 365", icon: "ms-office", rawIcon: "ms-office", name: "Microsoft 365" },
+    "office365": { id: "Microsoft 365", icon: "ms-office", rawIcon: "ms-office", name: "Microsoft 365" },
+    "microsoft-365": { id: "Microsoft 365", icon: "ms-office", rawIcon: "ms-office", name: "Microsoft 365" },
+    "m365": { id: "Microsoft 365", icon: "ms-office", rawIcon: "ms-office", name: "Microsoft 365" },
+    "word": { id: "Word", icon: "ms-word", rawIcon: "ms-word", name: "Microsoft Word" },
+    "excel": { id: "Excel", icon: "ms-excel", rawIcon: "ms-excel", name: "Microsoft Excel" },
+    "powerpoint": { id: "PowerPoint", icon: "ms-powerpoint", rawIcon: "ms-powerpoint", name: "Microsoft PowerPoint" },
+    "onenote": { id: "OneNote", icon: "ms-onenote", rawIcon: "ms-onenote", name: "Microsoft OneNote" },
+    "teams": { id: "Teams", icon: "teams", rawIcon: "teams", name: "Microsoft Teams" },
+    "ms-teams": { id: "Teams", icon: "teams", rawIcon: "teams", name: "Microsoft Teams" },
+    "teams.microsoft.com": { id: "Teams", icon: "teams", rawIcon: "teams", name: "Microsoft Teams" },
     "xdg-desktop-portal-gtk": { id: "xdg-desktop-portal-gtk", icon: "document-open", rawIcon: "document-open", name: "File Chooser" },
     "org.freedesktop.impl.portal.desktop.gtk": { id: "org.freedesktop.impl.portal.desktop.gtk", icon: "document-open", rawIcon: "document-open", name: "File Chooser" },
     "xdg-desktop-portal-gnome": { id: "xdg-desktop-portal-gnome", icon: "document-open", rawIcon: "document-open", name: "File Chooser" },
@@ -266,6 +281,14 @@ var FALLBACK_ICON_CANDIDATES = {
     "music.yandex.ru": ["yandex-music", "music-yandex"],
     "photoshop": ["Photoshop2017", "photoshop", "adobe-photoshop"],
     "photoshop 2017": ["Photoshop2017", "photoshop", "adobe-photoshop"],
+    "outlook": ["ms-outlook", "outlook", "office365-outlook", "microsoft-outlook"],
+    "office": ["ms-office", "office", "office365", "microsoft-365", "microsoft-office"],
+    "office365": ["ms-office", "office", "office365", "microsoft-365", "microsoft-office"],
+    "word": ["ms-word", "word", "office365-word", "microsoft-word"],
+    "excel": ["ms-excel", "excel", "office365-excel", "microsoft-excel"],
+    "powerpoint": ["ms-powerpoint", "powerpoint", "office365-powerpoint", "microsoft-powerpoint"],
+    "onenote": ["ms-onenote", "onenote", "office365-onenote", "microsoft-onenote"],
+    "teams": ["teams", "ms-teams", "microsoft-teams", "teams-for-linux"],
     "xdg-desktop-portal-gtk": ["document-open", "document-save-as", "document-save", "system-file-manager", "org.gnome.Nautilus", "file-manager", "folder"],
     "org.freedesktop.impl.portal.desktop.gtk": ["document-open", "document-save-as", "document-save", "system-file-manager", "org.gnome.Nautilus", "file-manager", "folder"],
     "xdg-desktop-portal-gnome": ["document-open", "document-save-as", "document-save", "system-file-manager", "org.gnome.Nautilus", "file-manager", "folder"],
@@ -489,11 +512,18 @@ function extractChromeDomain(appClass) {
     if (s === "brave-browser" || s === "brave-origin" || s === "chromium-browser" || s === "chrome-browser" || s === "yandex-browser" || s === "yandex-browser-stable") {
         return "";
     }
+    if (s.indexOf("crx_") === 0) {
+        return s.replace(/^crx_/, "");
+    }
+    if (s.indexOf("ffpwa-") === 0 || s.indexOf("ffpwa_") === 0) {
+        return s.replace(/^ffpwa[-_]/, "");
+    }
     if (s.indexOf("chrome-") === 0 || s.indexOf("chromium-") === 0 || s.indexOf("brave-") === 0 || s.indexOf("edge-") === 0 || s.indexOf("msedge-") === 0) {
         var dom = s.replace(/^(chrome|chromium|brave|msedge|edge)-/, "")
                    .replace(/__-.*$/, "")
                    .replace(/__.*$/, "")
                    .replace(/_\/.*$/, "")
+                   .replace(/-default$/i, "")
                    .replace(/^-+/, "");
         if (dom === "browser") return "";
         return dom;
@@ -570,12 +600,14 @@ function findEntry(desktopEntries, appId) {
             }
         }
 
-        // 1. Exact match on entry.id (with and without .desktop / .exe)
+        // 1. Exact match on entry.id or entry.startupClass (with and without .desktop / .exe)
         for (var i = 0; i < list.length; i++) {
             var entry = unwrapEntry(list[i]);
             if (!entry) continue;
             var entryId = stripDesktop(entry.id || "").toLowerCase();
+            var entrySc = String(entry.startupClass || entry.startupWMClass || "").toLowerCase();
             if (entryId === target || (cleanTarget && entryId === cleanTarget) || (hypTarget && entryId === hypTarget) || (firstToken.length >= 3 && entryId === firstToken)) return entry;
+            if (entrySc && (entrySc === target || (cleanTarget && entrySc === cleanTarget) || (hypTarget && entrySc === hypTarget))) return entry;
         }
 
         // 1b. Exact match on entry.name (case-insensitive)
@@ -1048,10 +1080,27 @@ function matchToplevel(toplevel, appId, entry, desktopEntries, cachedCliApp) {
     var hypClass = (baseAppClass && baseAppClass.indexOf(" ") !== -1) ? baseAppClass.replace(/\s+/g, "-") : "";
 
     var chromeDom = extractChromeDomain(appClass);
-    var isWebAppWindow = (chromeDom.length > 0);
+    var isWebAppWindow = (chromeDom.length > 0) || (appClass.indexOf("crx_") === 0) || (appClass.indexOf("ffpwa-") === 0);
 
-    // If this window is a Chrome Web App (e.g. chrome-maps.google.com__-Default):
-    // Standard web browser dock items (Google Chrome, Chromium, Brave) should NOT swallow it!
+    // Also check if appClass corresponds to a known PWA startupClass in desktopEntries
+    if (!isWebAppWindow && desktopEntries && desktopEntries.length > 0) {
+        var dList = toArray(desktopEntries);
+        for (var di = 0; di < dList.length; di++) {
+            var de = unwrapEntry(dList[di]);
+            if (!de) continue;
+            var dSc = String(de.startupClass || de.startupWMClass || "").toLowerCase();
+            if (dSc && dSc === appClass) {
+                var dExec = getEntryExec(de).toLowerCase();
+                if (dExec.indexOf("--app=") !== -1 || dExec.indexOf("omarchy-launch-webapp") !== -1 || dExec.indexOf("--app-id=") !== -1) {
+                    isWebAppWindow = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    // If this window is a Web App / PWA (e.g. chrome-maps.google.com__-Default, crx_..., msedge-outlook...):
+    // Standard web browser dock items (Google Chrome, Chromium, Brave, Edge, Firefox) should NOT swallow it!
     if (isWebAppWindow && isBrowserApp(cleanId)) {
         return false;
     }
@@ -1060,7 +1109,7 @@ function matchToplevel(toplevel, appId, entry, desktopEntries, cachedCliApp) {
     // If this window is a standard web browser (google-chrome, yandex-browser, firefox, brave, etc.):
     // It can ONLY match its corresponding browser dock item. It must NEVER be swallowed
     // by web apps (omarchy-launch-webapp, chrome-*, etc.) or unrelated dock items!
-    if (isBrowserApp(appClassClean) || isBrowserApp(baseAppClass)) {
+    if (!isWebAppWindow && (isBrowserApp(appClassClean) || isBrowserApp(baseAppClass))) {
         var isYandexTop = (appClassClean === "yandex-browser" || appClassClean === "yandex-browser-stable" || appClassClean === "ru.yandex.desktop.browser" || baseAppClass === "yandex-browser");
         var isChromeTop = (appClassClean === "google-chrome" || appClassClean === "google-chrome-stable" || appClassClean === "chromium" || baseAppClass === "google-chrome");
         var isBraveTop = (appClassClean === "brave" || appClassClean === "brave-browser" || appClassClean === "brave-origin" || baseAppClass === "brave");
@@ -1151,12 +1200,16 @@ function matchToplevel(toplevel, appId, entry, desktopEntries, cachedCliApp) {
     if (normId.length > 0 && (normClass === normId || normBaseClass === normId)) return true;
     if (normId.length > 0 && firstClassToken.length >= 3 && normalizeKey(firstClassToken) === normId) return true;
 
-    // 3. Entry ID, Name, Icon and Exec match
+    // 3. Entry ID, StartupClass, Name, Icon and Exec match
     if (entry) {
         var entryId = stripDesktop(entry.id || "").toLowerCase();
         var normEntryId = normalizeKey(entryId);
+        var entrySc = String(entry.startupClass || entry.startupWMClass || "").toLowerCase();
+        var normEntrySc = normalizeKey(entrySc);
         if (entryId && (appClass === entryId || appClassClean === entryId || baseAppClass === entryId || hypClass === entryId || normClass === normEntryId || normBaseClass === normEntryId)) return true;
+        if (entrySc && (appClass === entrySc || appClassClean === entrySc || baseAppClass === entrySc || hypClass === entrySc || normClass === normEntrySc || normBaseClass === normEntrySc)) return true;
         if (entryId && firstClassToken.length >= 3 && (firstClassToken === entryId || normalizeKey(firstClassToken) === normEntryId)) return true;
+        if (entrySc && firstClassToken.length >= 3 && (firstClassToken === entrySc || normalizeKey(firstClassToken) === normEntrySc)) return true;
 
         var entryName = String(entry.name || "").toLowerCase();
         if (entryName) {
@@ -1189,11 +1242,15 @@ function matchToplevel(toplevel, appId, entry, desktopEntries, cachedCliApp) {
         if (cleanId && cleanId.indexOf(chromeDom) !== -1) return true;
         if (normId.length > 0 && normId.indexOf(normalizeKey(chromeDom)) !== -1) return true;
 
-        // Check specific service keywords (e.g. "photos" in "photos.google.com") matching candidate dock item tokens
+        // Check entry.appId or startupClass against chromeDom or full appClass
+        var cEntrySc = String(entry ? (entry.startupClass || entry.startupWMClass || "") : "").toLowerCase();
+        if (cEntrySc && (cEntrySc === appClass || cEntrySc === appClassClean || cEntrySc.indexOf(chromeDom) !== -1 || chromeDom.indexOf(cEntrySc) !== -1)) return true;
+
+        // Check specific service keywords (e.g. "photos", "outlook", "word") matching candidate dock item tokens
         var domParts = chromeDom.split(".");
         for (var p = 0; p < domParts.length; p++) {
             var part = domParts[p];
-            if (part.length >= 3 && part !== "com" && part !== "org" && part !== "net" && part !== "web" && part !== "app" && part !== "google" && part !== "yandex" && part !== "microsoft" && part !== "apple") {
+            if (part.length >= 3 && part !== "com" && part !== "org" && part !== "net" && part !== "web" && part !== "app" && part !== "google" && part !== "yandex" && part !== "apple") {
                 var eNameTokens = entry && entry.name ? String(entry.name).toLowerCase().split(/[\s\-_\.]+/) : [];
                 var eIdTokens = entry && entry.id ? stripDesktop(entry.id).toLowerCase().split(/[\s\-_\.]+/) : [];
                 var eIconTokens = entry && entry.icon ? String(entry.icon).toLowerCase().split(/[\s\-_\.]+/) : [];
@@ -1208,11 +1265,26 @@ function matchToplevel(toplevel, appId, entry, desktopEntries, cachedCliApp) {
                 }
             }
         }
+
+        // Office 365 PWA matching by window title / app name (e.g. "Outlook (PWA)", "Word", "Excel", "Teams")
+        var o365Services = ["outlook", "word", "excel", "powerpoint", "onenote", "teams"];
+        for (var os = 0; os < o365Services.length; os++) {
+            var service = o365Services[os];
+            if (chromeDom.indexOf(service) !== -1 || title.indexOf(service) !== -1 || appClass.indexOf(service) !== -1) {
+                var eNameLow = entry && entry.name ? String(entry.name).toLowerCase() : "";
+                var eIdLow = entry && entry.id ? stripDesktop(entry.id).toLowerCase() : "";
+                if (cleanId === service || cleanId.indexOf(service) !== -1 || eIdLow.indexOf(service) !== -1 || eNameLow.indexOf(service) !== -1) {
+                    return true;
+                }
+            }
+        }
     }
 
-    // 5. Window Title Match for web apps / webapp launchers (only for web app windows, never 1-2 letter substrings)
-    if (isWebAppWindow && entry && getEntryExec(entry).toLowerCase().indexOf("omarchy-launch-webapp") !== -1) {
-        if (entry.name && title.length > 0) {
+    // 5. Window Title Match for web apps / webapp launchers
+    if (isWebAppWindow && entry) {
+        var isLauncherOrPwa = getEntryExec(entry).toLowerCase().indexOf("omarchy-launch-webapp") !== -1 ||
+                              getEntryExec(entry).toLowerCase().indexOf("--app=") !== -1;
+        if (isLauncherOrPwa && entry.name && title.length > 0) {
             var normName = normalizeKey(entry.name);
             var normTitle = normalizeKey(title);
             if (normName.length >= 3 && normTitle.indexOf(normName) !== -1) return true;
@@ -1256,20 +1328,30 @@ function toCanonical(str) {
     if (raw.indexOf("spotify") !== -1) return "spotify";
     if (raw.indexOf("gmail") !== -1 || raw.indexOf("mail.google.com") !== -1) return "gmail";
     if (raw.indexOf("outlook") !== -1) return "outlook";
+    if (raw.indexOf("teams") !== -1) return "teams";
+    if (raw.indexOf("word") !== -1 && (raw.indexOf("office") !== -1 || raw.indexOf("ms") !== -1 || raw.indexOf("microsoft") !== -1)) return "word";
+    if (raw.indexOf("excel") !== -1 && (raw.indexOf("office") !== -1 || raw.indexOf("ms") !== -1 || raw.indexOf("microsoft") !== -1)) return "excel";
+    if (raw.indexOf("powerpoint") !== -1) return "powerpoint";
+    if (raw.indexOf("onenote") !== -1) return "onenote";
+    if (raw.indexOf("office365") !== -1 || raw.indexOf("office.com") !== -1 || raw.indexOf("m365") !== -1) return "office";
     if (raw.indexOf("proton") !== -1 || raw.indexOf("protonmail") !== -1) return "protonmail";
     if (raw.indexOf("antigravity") !== -1) return "antigravity";
     if (raw.indexOf("code") !== -1 || raw.indexOf("vscodium") !== -1 || raw.indexOf("vscode") !== -1) return "code";
     if (raw.indexOf("nautilus") !== -1 || raw.indexOf("org.gnome.nautilus") !== -1 || raw.indexOf("thunar") !== -1 || raw.indexOf("dolphin") !== -1) return "nautilus";
     if (raw.indexOf("kitty") !== -1 || raw.indexOf("alacritty") !== -1 || raw.indexOf("ghostty") !== -1 || raw.indexOf("foot") !== -1 || raw.indexOf("terminal") !== -1) return "terminal";
-    // Chromium web apps ("chrome-youtube.com__-Default") must keep their own site
-    // as the key. Folding them all into "chrome" made a number in ONE app's title
-    // (YouTube's "(13) ...") show as a badge on EVERY web app (Maps too).
-    var webApp = raw.match(/^chrome-([a-z0-9.-]+?)__/);
+    // Chromium / Edge / Brave web apps ("chrome-youtube.com__-Default", "msedge-outlook.office.com__-Default", "crx_...")
+    // must keep their own site as the key.
+    var webApp = raw.match(/^(?:chrome|chromium|brave|msedge|edge)-([a-z0-9.-]+?)(?:__|--|-default|$)/);
     if (webApp) {
         var labels = webApp[1].replace(/^(www|web|app|m)\./, "").split(".");
         if (labels[0]) return labels[0];
     }
+    if (raw.indexOf("crx_") === 0) {
+        return raw.replace(/^crx_/, "");
+    }
     if (raw.indexOf("chrome") !== -1 || raw.indexOf("chromium") !== -1) return "chrome";
+    if (raw.indexOf("msedge") !== -1 || raw.indexOf("edge") !== -1) return "edge";
+    if (raw.indexOf("brave") !== -1) return "brave";
     if (raw.indexOf("firefox") !== -1 || raw.indexOf("zen-browser") !== -1) return "firefox";
 
     // 2. Extract domain core from Web App URLs
@@ -1340,6 +1422,7 @@ function createDesktopEntryIndex(desktopEntries) {
     var byName = Object.create(null);
     var byNorm = Object.create(null);
     var byExec = Object.create(null);
+    var byStartupClass = Object.create(null);
 
     for (var i = 0; i < list.length; i++) {
         var e = unwrapEntry(list[i]);
@@ -1347,6 +1430,13 @@ function createDesktopEntryIndex(desktopEntries) {
 
         var id = stripDesktop(e.id || "").toLowerCase();
         if (id && !byId[id]) byId[id] = e;
+
+        var sc = String(e.startupClass || e.startupWMClass || "").toLowerCase().trim();
+        if (sc) {
+            if (!byStartupClass[sc]) byStartupClass[sc] = e;
+            var scNorm = normalizeKey(sc);
+            if (scNorm && !byNorm[scNorm]) byNorm[scNorm] = e;
+        }
 
         var name = String(e.name || "").toLowerCase();
         if (name && !byName[name]) byName[name] = e;
@@ -1379,7 +1469,7 @@ function createDesktopEntryIndex(desktopEntries) {
         }
     }
 
-    return { list: list, byId: byId, byName: byName, byNorm: byNorm, byExec: byExec };
+    return { list: list, byId: byId, byName: byName, byNorm: byNorm, byExec: byExec, byStartupClass: byStartupClass };
 }
 
 function findEntryFast(index, appId) {
@@ -1389,6 +1479,9 @@ function findEntryFast(index, appId) {
 
     // 1. O(1) direct ID match
     if (index.byId[target]) return index.byId[target];
+
+    // 1b. O(1) direct StartupClass match
+    if (index.byStartupClass && index.byStartupClass[target]) return index.byStartupClass[target];
 
     // 2. O(1) direct Name match
     if (index.byName[target]) return index.byName[target];

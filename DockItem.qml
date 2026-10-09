@@ -300,9 +300,9 @@ Item {
             fillMode: Image.PreserveAspectFit
             cache: true
             source: (root.iconRevision, root.resolveIcon(root.itemData))
-            sourceSize: Qt.size(Math.max(128, width * 4 * Screen.devicePixelRatio), Math.max(128, height * 4 * Screen.devicePixelRatio))
+            sourceSize: Qt.size(Math.ceil(width * 1.15 * Screen.devicePixelRatio), Math.ceil(height * 1.15 * Screen.devicePixelRatio))
             asynchronous: false
-            mipmap: true
+            mipmap: false
             smooth: true
             antialiasing: true
         }
@@ -324,7 +324,8 @@ Item {
                 }
                 return "file:///usr/share/pixmaps/omarchy.png"
             }
-            sourceSize: Qt.size(Math.max(128, width * 4 * Screen.devicePixelRatio), Math.max(128, height * 4 * Screen.devicePixelRatio))
+            sourceSize: Qt.size(Math.ceil(width * 1.15 * Screen.devicePixelRatio), Math.ceil(height * 1.15 * Screen.devicePixelRatio))
+            mipmap: false
             smooth: true
             antialiasing: true
         }
@@ -364,8 +365,8 @@ Item {
                     fillMode: Image.PreserveAspectFit
                     cache: true
                     source: (root.iconRevision, root.resolveIcon(modelData))
-                    sourceSize: Qt.size(Math.max(64, width * 4 * Screen.devicePixelRatio), Math.max(64, height * 4 * Screen.devicePixelRatio))
-                    mipmap: true
+                    sourceSize: Qt.size(Math.ceil(width * Screen.devicePixelRatio), Math.ceil(height * Screen.devicePixelRatio))
+                    mipmap: false
                     smooth: true
                     antialiasing: true
                 }

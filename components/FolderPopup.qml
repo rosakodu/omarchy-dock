@@ -457,9 +457,9 @@ PanelWindow {
                                     fillMode: Image.PreserveAspectFit
                                     cache: true
                                     source: (stackWindow.root.iconRevision, stackWindow.root.resolveIcon(modelData))
-                                    sourceSize: Qt.size(Math.max(128, 28 * 4 * Screen.devicePixelRatio), Math.max(128, 28 * 4 * Screen.devicePixelRatio))
+                                    sourceSize: Qt.size(Math.ceil(28 * Screen.devicePixelRatio), Math.ceil(28 * Screen.devicePixelRatio))
                                     asynchronous: false
-                                    mipmap: true
+                                    mipmap: false
                                     smooth: true
                                     antialiasing: true
                                 }

@@ -662,6 +662,73 @@ TestCase {
         compare(yandexItem.isRunning, true)
         compare(yandexItem.windowCount, 1)
     }
+
+    function test_pwaAndOffice365Matching() {
+        // Test Issue #53: PWA windows (Edge, Chrome crx_, Office 365) must not be swallowed by browsers
+        var outlookTop = { appId: "msedge-outlook.office.com__-Default", title: "Outlook (PWA)" }
+        var crxTop = { appId: "crx_faolnafnngnfdkgoggdpaglmakhgahdd", title: "Word" }
+        var browserTop = { appId: "microsoft-edge", title: "Edge Browser" }
+
+        var outlookEntry = {
+            id: "msedge-outlook.office.com__-Default.desktop",
+            name: "Outlook",
+            icon: "ms-outlook",
+            startupClass: "msedge-outlook.office.com__-Default",
+            exec: "microsoft-edge --app=https://outlook.office.com"
+        }
+        var wordEntry = {
+            id: "crx_faolnafnngnfdkgoggdpaglmakhgahdd.desktop",
+            name: "Microsoft Word",
+            icon: "ms-word",
+            startupClass: "crx_faolnafnngnfdkgoggdpaglmakhgahdd",
+            exec: "google-chrome --app-id=faolnafnngnfdkgoggdpaglmakhgahdd"
+        }
+        var edgeBrowserEntry = {
+            id: "microsoft-edge.desktop",
+            name: "Microsoft Edge",
+            icon: "microsoft-edge",
+            exec: "microsoft-edge"
+        }
+        var entries = [outlookEntry, wordEntry, edgeBrowserEntry]
+
+        // 1. Edge browser dock item must NOT swallow Outlook PWA or Word PWA
+        var matchEdgeOutlook = DockMatcher.matchToplevel(outlookTop, "microsoft-edge", edgeBrowserEntry, entries)
+        compare(matchEdgeOutlook, false)
+
+        var matchEdgeWord = DockMatcher.matchToplevel(crxTop, "microsoft-edge", edgeBrowserEntry, entries)
+        compare(matchEdgeWord, false)
+
+        // 2. Chrome browser dock item must NOT swallow Outlook PWA or Word PWA
+        var chromeBrowserEntry = { id: "google-chrome.desktop", name: "Google Chrome", icon: "google-chrome", exec: "google-chrome" }
+        var matchChromeOutlook = DockMatcher.matchToplevel(outlookTop, "google-chrome", chromeBrowserEntry, entries)
+        compare(matchChromeOutlook, false)
+
+        var matchChromeWord = DockMatcher.matchToplevel(crxTop, "google-chrome", chromeBrowserEntry, entries)
+        compare(matchChromeWord, false)
+
+        // 3. Outlook dock item matches Outlook window
+        var matchOutlook = DockMatcher.matchToplevel(outlookTop, "outlook", outlookEntry, entries)
+        compare(matchOutlook, true)
+
+        // 4. Word dock item matches crx Word window via startupClass & name
+        var matchWord = DockMatcher.matchToplevel(crxTop, "word", wordEntry, entries)
+        compare(matchWord, true)
+
+        // 5. Index fast lookup by startupClass
+        var index = DockMatcher.createDesktopEntryIndex(entries)
+        var foundOutlook = DockMatcher.findEntryFast(index, "msedge-outlook.office.com__-Default")
+        verify(foundOutlook !== null)
+        compare(foundOutlook.name, "Outlook")
+
+        var foundWord = DockMatcher.findEntryFast(index, "crx_faolnafnngnfdkgoggdpaglmakhgahdd")
+        verify(foundWord !== null)
+        compare(foundWord.name, "Microsoft Word")
+
+        // 6. toCanonical keeps Office 365 PWAs distinct
+        compare(DockMatcher.toCanonical("msedge-outlook.office.com__-Default"), "outlook")
+        compare(DockMatcher.toCanonical("Outlook (PWA)"), "outlook")
+        compare(DockMatcher.toCanonical("Microsoft Teams"), "teams")
+    }
 }
 
 
