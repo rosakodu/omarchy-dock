@@ -10,6 +10,22 @@ TestCase {
         compare(settings.visibilityMode, "always")
         compare(settings.overlayMode, false)
         compare(settings.visibleWorkspace, "all")
+        compare(settings.showOnEmptyWorkspace, true)
+    }
+
+    function test_normalizeShowOnEmptyWorkspace_data() {
+        return [
+            { tag: "undefined", input: undefined, expected: true },
+            { tag: "true", input: true, expected: true },
+            { tag: "false", input: false, expected: false },
+            { tag: "string-false", input: "false", expected: false },
+            { tag: "zero", input: 0, expected: false },
+            { tag: "string-one", input: "1", expected: true }
+        ]
+    }
+
+    function test_normalizeShowOnEmptyWorkspace(data) {
+        compare(DockSettings.normalizeShowOnEmptyWorkspace(data.input), data.expected)
     }
 
     function test_legacyAutohideMigration_data() {
