@@ -493,6 +493,47 @@ TestCase {
         compare(items[1].windowCount, 1)
     }
 
+    function test_braveWebAppMatching() {
+        var braveEntry = { id: "brave-browser.desktop", name: "Brave", exec: "brave %U", icon: "brave-desktop", startupClass: "brave-browser" }
+        var musicEntry = { id: "Apple Music.desktop", name: "Apple Music", exec: 'omarchy-launch-webapp "https://music.apple.com/"', icon: "apple-music" }
+        var entries = [braveEntry, musicEntry]
+        var browserTop = { appId: "brave-browser", title: "New Tab - Brave" }
+        var webAppTop = { appId: "brave-music.apple.com__-Default", title: "Apple Music - Web Player" }
+
+        // 1. The class's first token is the browser prefix "brave", which must not resolve to Brave itself
+        var index = DockMatcher.createDesktopEntryIndex(entries)
+        compare(DockMatcher.findEntryFast(index, "brave-music.apple.com__-Default").id, "Apple Music.desktop")
+        compare(DockMatcher.findEntry(entries, "brave-music.apple.com__-Default").id, "Apple Music.desktop")
+
+        // 2. buildDockItems: the web app gets its own item instead of no item at all
+        var items = DockMatcher.buildDockItems([], [browserTop, webAppTop], browserTop, entries, null, {}, {}, 0, [])
+        compare(items.length, 2)
+        compare(items[0].desktopId, "brave-browser.desktop")
+        compare(items[0].windowCount, 1)
+        compare(items[1].desktopId, "Apple Music.desktop")
+        compare(items[1].icon, "apple-music")
+        compare(items[1].windowCount, 1)
+    }
+
+    function test_microsoftWebAppNotClaimedByMicrosoftApps() {
+        var vscodeEntry = { id: "com.microsoft.VSCode.desktop", name: "Visual Studio Code", exec: "code %F", icon: "vscode", startupClass: "com.microsoft.VSCode" }
+        var teamsEntry = { id: "Teams.desktop", name: "Teams", exec: 'omarchy-launch-webapp "https://teams.microsoft.com"', icon: "teams" }
+        var entries = [vscodeEntry, teamsEntry]
+        var teamsTop = { appId: "chrome-teams.microsoft.com__-Default", title: "Chat | Microsoft Teams" }
+
+        // 1. "microsoft" in the domain is not a service keyword shared with com.microsoft.VSCode
+        compare(DockMatcher.matchToplevel(teamsTop, "com.microsoft.VSCode", vscodeEntry, entries), false)
+        compare(DockMatcher.matchToplevel(teamsTop, "Teams", teamsEntry, entries), true)
+
+        // 2. buildDockItems: a pinned VS Code stays idle and Teams gets its own item
+        var items = DockMatcher.buildDockItems(["com.microsoft.VSCode"], [teamsTop], teamsTop, entries, null, {}, {}, 0, [])
+        compare(items.length, 2)
+        compare(items[0].id, "com.microsoft.VSCode")
+        compare(items[0].isRunning, false)
+        compare(items[1].desktopId, "Teams.desktop")
+        compare(items[1].windowCount, 1)
+    }
+
     function test_diskIconLookup() {
         DockMatcher.setDiskIcons({
             "omanta": "/usr/share/icons/hicolor/scalable/apps/omanta.svg",

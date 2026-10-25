@@ -562,7 +562,9 @@ function findEntry(desktopEntries, appId) {
         var cleaned = cleanWindowAppId(id);
         var cleanTarget = cleaned ? cleaned.toLowerCase() : "";
         var cleanNorm = cleanTarget ? normalizeKey(cleanTarget) : "";
-        var firstToken = cleanTarget ? cleanTarget.split(/[\s\-_]+/)[0] : "";
+        // A web app window's first token is its browser prefix (brave-music.apple.com__-Default -> "brave"),
+        // which would resolve to the browser's own entry before the domain match below ever runs.
+        var firstToken = (cleanTarget && !chromeDom) ? cleanTarget.split(/[\s\-_]+/)[0] : "";
         var hypTarget = (cleanTarget && cleanTarget.indexOf(" ") !== -1) ? cleanTarget.replace(/\s+/g, "-") : "";
 
         // Transmission GTK Wayland dynamic app ID resolution (e.g. com.transmissionbt.transmission_54_620133)
@@ -747,7 +749,7 @@ function findEntry(desktopEntries, appId) {
     if (KNOWN_APP_DEFAULTS[cleanId]) return KNOWN_APP_DEFAULTS[cleanId];
     var cleanedId = cleanWindowAppId(id).toLowerCase();
     if (cleanedId && KNOWN_APP_DEFAULTS[cleanedId]) return KNOWN_APP_DEFAULTS[cleanedId];
-    var firstTokId = cleanedId ? cleanedId.split(/[\s\-_]+/)[0] : "";
+    var firstTokId = (cleanedId && !chromeDom) ? cleanedId.split(/[\s\-_]+/)[0] : "";
     if (firstTokId && KNOWN_APP_DEFAULTS[firstTokId]) return KNOWN_APP_DEFAULTS[firstTokId];
     if (chromeDom && KNOWN_APP_DEFAULTS[chromeDom]) return KNOWN_APP_DEFAULTS[chromeDom];
 
@@ -1266,7 +1268,7 @@ function matchToplevel(toplevel, appId, entry, desktopEntries, cachedCliApp) {
         var domParts = chromeDom.split(".");
         for (var p = 0; p < domParts.length; p++) {
             var part = domParts[p];
-            if (part.length >= 3 && part !== "com" && part !== "org" && part !== "net" && part !== "web" && part !== "app" && part !== "google" && part !== "yandex" && part !== "apple") {
+            if (part.length >= 3 && part !== "com" && part !== "org" && part !== "net" && part !== "web" && part !== "app" && part !== "google" && part !== "yandex" && part !== "microsoft" && part !== "apple") {
                 var eNameTokens = entry && entry.name ? String(entry.name).toLowerCase().split(/[\s\-_\.]+/) : [];
                 var eIdTokens = entry && entry.id ? stripDesktop(entry.id).toLowerCase().split(/[\s\-_\.]+/) : [];
                 var eIconTokens = entry && entry.icon ? String(entry.icon).toLowerCase().split(/[\s\-_\.]+/) : [];
@@ -1553,8 +1555,8 @@ function findEntryFast(index, appId) {
         if (cleanNorm && index.byNorm[cleanNorm]) return index.byNorm[cleanNorm];
     }
 
-    // 6b. First token match (e.g. "syncterm" from "syncterm 1.8")
-    var firstToken = cleanTarget ? cleanTarget.split(/[\s\-_]+/)[0] : "";
+    // 6b. First token match (e.g. "syncterm" from "syncterm 1.8"), skipped for web app windows whose first token is the browser
+    var firstToken = (cleanTarget && !extractChromeDomain(id)) ? cleanTarget.split(/[\s\-_]+/)[0] : "";
     if (!isSteamGame && firstToken && firstToken.length >= 3 && firstToken !== cleanTarget && firstToken !== target && firstToken !== "steam") {
         if (index.byId[firstToken]) return index.byId[firstToken];
         if (index.byName[firstToken]) return index.byName[firstToken];
