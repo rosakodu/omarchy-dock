@@ -1977,10 +1977,31 @@ Item {
     // Curated available symbols for folder icon personalization (Clean monochrome vector glyphs)
     readonly property var availableFolderIcons: ["󰉋", "󰒓", "󰞷", "󰝚", "󰊴", "󰏘", "󰭹", "󰖟", "󰕧", "󰈔", "󰍹", "󰖩", "󰌾", "♥"]
 
+    function isAllowedIconPath(path) {
+        if (!path || typeof path !== "string") return false
+        var p = path.trim()
+        if (p.indexOf("/usr/share/") === 0 ||
+            p.indexOf("/usr/local/share/") === 0 ||
+            p.indexOf("/opt/") === 0 ||
+            p.indexOf("/var/lib/flatpak/exports/share/") === 0) {
+            return true
+        }
+        if (p.indexOf("/.local/share/icons/") !== -1 ||
+            p.indexOf("/.local/share/pixmaps/") !== -1 ||
+            p.indexOf("/.icons/") !== -1) {
+            return true
+        }
+        return false
+    }
+
     function isLocalIconUri(uri) {
         if (!uri) return false
         var s = String(uri).trim()
-        return s.indexOf("file://") === 0 || s.indexOf("image://") === 0 || s.indexOf("qrc://") === 0
+        if (s.indexOf("image://") === 0 || s.indexOf("qrc://") === 0) return true
+        if (s.indexOf("file://") === 0) {
+            return isAllowedIconPath(s.slice(7))
+        }
+        return false
     }
 
     function resolveIcon(itemObj) {
@@ -1989,7 +2010,10 @@ Item {
         if (!raw) return Quickshell.iconPath("application-x-executable", true)
         if (isLocalIconUri(raw)) return raw
         if (raw.indexOf("://") >= 0) return Quickshell.iconPath("application-x-executable", true)
-        if (raw.indexOf("/") === 0) return "file://" + raw
+        if (raw.indexOf("/") === 0) {
+            if (isAllowedIconPath(raw)) return "file://" + raw
+            return Quickshell.iconPath("application-x-executable", true)
+        }
 
         var cands = (typeof itemObj === "string")
             ? DockModel.getCandidates(itemObj, itemObj, itemObj)
@@ -1999,7 +2023,10 @@ Item {
             var c = cands[i]
             if (isLocalIconUri(c)) return c
             if (c.indexOf("://") >= 0) continue
-            if (c.indexOf("/") === 0) return "file://" + c
+            if (c.indexOf("/") === 0) {
+                if (isAllowedIconPath(c)) return "file://" + c
+                continue
+            }
             var diskHit = DockModel.getDiskIcon(c)
             if (diskHit) return diskHit
             var diskHitLow = DockModel.getDiskIcon(c.toLowerCase())

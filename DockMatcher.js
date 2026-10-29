@@ -22,7 +22,30 @@ function cleanWindowAppId(id) {
 function isLocalIconUri(uri) {
     if (!uri) return false;
     var s = String(uri).trim();
-    return s.indexOf("file://") === 0 || s.indexOf("image://") === 0 || s.indexOf("qrc://") === 0;
+    if (s.indexOf("image://") === 0 || s.indexOf("qrc://") === 0) return true;
+    if (s.indexOf("file://") === 0) {
+        var path = s.slice(7);
+        return isAllowedIconPath(path);
+    }
+    return false;
+}
+
+function isAllowedIconPath(path) {
+    if (!path || typeof path !== "string") return false;
+    var p = path.trim();
+    if (p.indexOf("/usr/share/") === 0 ||
+        p.indexOf("/usr/local/share/") === 0 ||
+        p.indexOf("/opt/") === 0 ||
+        p.indexOf("/var/lib/flatpak/exports/share/") === 0) {
+        return true;
+    }
+    // Allow user home icon themes and pixmaps only (~/.local/share/icons, ~/.icons, etc.)
+    if (p.indexOf("/.local/share/icons/") !== -1 ||
+        p.indexOf("/.local/share/pixmaps/") !== -1 ||
+        p.indexOf("/.icons/") !== -1) {
+        return true;
+    }
+    return false;
 }
 
 function toArray(list) {
@@ -779,7 +802,7 @@ function getDiskIcon(name) {
     if (!name) return "";
     var s = String(name).trim();
     if (s.indexOf("://") >= 0) return isLocalIconUri(s) ? s : "";
-    if (s.charAt(0) === "/") return "file://" + s;
+    if (s.charAt(0) === "/") return isAllowedIconPath(s) ? ("file://" + s) : "";
 
     var low = s.toLowerCase();
     if (_diskIcons[low]) return "file://" + _diskIcons[low];
@@ -811,16 +834,19 @@ function resolveIcon(entry, appId, appLibrary) {
     if (entry && entry.icon) {
         var iconVal = String(entry.icon).trim();
         if (isLocalIconUri(iconVal)) return iconVal;
-        if (iconVal.charAt(0) === "/") return "file://" + iconVal;
-        var diskFound = getDiskIcon(iconVal);
-        if (diskFound) return diskFound;
-        if (appLibrary && typeof appLibrary.iconSource === "function") {
-            var src = appLibrary.iconSource(iconVal);
-            if (src && src.length > 0 && src.indexOf("application-x-executable") === -1) {
-                if (src.indexOf("://") < 0 || isLocalIconUri(src)) return src;
+        if (iconVal.charAt(0) === "/") {
+            if (isAllowedIconPath(iconVal)) return "file://" + iconVal;
+        } else {
+            var diskFound = getDiskIcon(iconVal);
+            if (diskFound) return diskFound;
+            if (appLibrary && typeof appLibrary.iconSource === "function") {
+                var src = appLibrary.iconSource(iconVal);
+                if (src && src.length > 0 && src.indexOf("application-x-executable") === -1) {
+                    if (src.indexOf("://") < 0 || isLocalIconUri(src)) return src;
+                }
             }
+            if (iconVal.indexOf("://") < 0 && iconVal.indexOf("/") === -1) return iconVal;
         }
-        if (iconVal.indexOf("://") < 0) return iconVal;
     }
     var id = stripDesktop(appId);
     var diskIdFound = getDiskIcon(id);
@@ -831,7 +857,10 @@ function resolveIcon(entry, appId, appLibrary) {
         for (var i = 0; i < candidates.length; i++) {
             var cand = candidates[i];
             if (isLocalIconUri(cand)) return cand;
-            if (cand.charAt(0) === "/") return "file://" + cand;
+            if (cand.charAt(0) === "/") {
+                if (isAllowedIconPath(cand)) return "file://" + cand;
+                continue;
+            }
             var cDisk = getDiskIcon(cand);
             if (cDisk) return cDisk;
             var cSrc = appLibrary.iconSource(cand);
@@ -863,7 +892,8 @@ function resolveIcon(entry, appId, appLibrary) {
             if (cd) return cd;
         }
     }
-    return (id && id.indexOf("://") < 0) ? id : "application-x-executable";
+    var safeId = (id && id.indexOf("://") < 0 && id.indexOf("/") === -1) ? id : "application-x-executable";
+    return safeId;
 }
 
 function isBrowserApp(id) {
@@ -1799,7 +1829,7 @@ function buildDockItems(pinnedList, toplevelsList, activeToplevel, desktopEntrie
             for (var s = 0; s < p.apps.length; s++) {
                 var sAppId = stripDesktop(p.apps[s]);
                 var sEntry = entryFor(sAppId);
-                var sRawIcon = (sEntry && sEntry.icon) ? sEntry.icon : sAppId;
+                var sRawIcon = (sEntry && sEntry.icon) ? sEntry.icon : ((sAppId && sAppId.indexOf("://") < 0 && sAppId.indexOf("/") === -1) ? sAppId : "application-x-executable");
                 var sIcon = resolveIcon(sEntry, sAppId, appLibrary);
                 var sName = sEntry && sEntry.name ? sEntry.name : sAppId;
                 var sIconSource = (sEntry && sEntry.iconSource) ? sEntry.iconSource : "";
@@ -1857,7 +1887,7 @@ function buildDockItems(pinnedList, toplevelsList, activeToplevel, desktopEntrie
             if (!appId) continue;
 
             var entry = entryFor(appId);
-            var rawIcon = (entry && entry.icon) ? entry.icon : appId;
+            var rawIcon = (entry && entry.icon) ? entry.icon : ((appId && appId.indexOf("://") < 0 && appId.indexOf("/") === -1) ? appId : "application-x-executable");
             var icon = resolveIcon(entry, appId, appLibrary);
             var name = entry && entry.name ? entry.name : appId;
             var iconSource = (entry && entry.iconSource) ? entry.iconSource : "";
@@ -1936,7 +1966,7 @@ function buildDockItems(pinnedList, toplevelsList, activeToplevel, desktopEntrie
         if (rEntry && rEntry.id) {
             rAppId = stripDesktop(rEntry.id);
         }
-        var rRawIcon = (rEntry && rEntry.icon) ? rEntry.icon : ((rAppId && rAppId.indexOf("://") < 0) ? rAppId : "application-x-executable");
+        var rRawIcon = (rEntry && rEntry.icon) ? rEntry.icon : ((rAppId && rAppId.indexOf("://") < 0 && rAppId.indexOf("/") === -1) ? rAppId : "application-x-executable");
         var rIcon = resolveIcon(rEntry, rAppId, appLibrary);
         var rName = (rEntry && rEntry.name) ? rEntry.name : (rTitle || rAppId || "App");
         var rIconSource = (rEntry && rEntry.iconSource) ? rEntry.iconSource : "";

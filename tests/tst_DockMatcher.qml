@@ -528,6 +528,14 @@ TestCase {
         compare(resolvedRemote !== "https://evil.example.com/icon.png", true)
         var resolvedRemoteId = DockMatcher.resolveIcon(null, "https://evil.example.com/app", null)
         compare(resolvedRemoteId, "application-x-executable")
+
+        // Arbitrary absolute path / named pipe injection rejection
+        compare(DockMatcher.getDiskIcon("/tmp/malicious-named-pipe"), "")
+        compare(DockMatcher.getDiskIcon("file:///tmp/malicious-named-pipe"), "")
+        compare(DockMatcher.getDiskIcon("/home/user/.cache/pipe"), "")
+        compare(DockMatcher.resolveIcon(null, "/tmp/malicious-named-pipe", null), "application-x-executable")
+        compare(DockMatcher.resolveIcon({ icon: "/tmp/malicious-named-pipe" }, "test", null), "test")
+        compare(DockMatcher.resolveIcon({ icon: "file:///tmp/malicious-named-pipe" }, "test", null), "test")
     }
 
     function test_quickshellDesktopEntryExecString() {
