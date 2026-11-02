@@ -45,13 +45,44 @@ function normalizeSuppressSystemDock(value) {
     return true
 }
 
+var ICON_SCALE_MIN = 0.75
+var ICON_SCALE_MAX = 2.0
+var SURFACE_AUTO = "auto"
+var SURFACE_POPUP = "popup"
+
+// Multiplies the whole dock (slots, icons, glyphs) on top of the shell's font scale.
+function normalizeIconScale(value) {
+    var scale = Number(value)
+    if (value === null || value === "" || !isFinite(scale)) return 1.0
+    return Math.max(ICON_SCALE_MIN, Math.min(ICON_SCALE_MAX, scale))
+}
+
+// "auto" follows the bar (translucent and borderless over a transparent bar);
+// "popup" always uses the surface and border of Omarchy's popups.
+function normalizeSurface(value) {
+    var surface = String(value === undefined || value === null ? "" : value).trim().toLowerCase()
+    return surface === SURFACE_POPUP ? SURFACE_POPUP : SURFACE_AUTO
+}
+
+function normalizeHoverMagnify(value) {
+    return value === true || value === "true"
+}
+
+// Scale of the icon under the pointer. Magnified icons still fit their slot (24 * 1.5 < 42).
+function hoverScale(hoverMagnify) {
+    return normalizeHoverMagnify(hoverMagnify) ? 1.5 : 1.10
+}
+
 function normalize(raw) {
     var settings = raw && typeof raw === "object" ? raw : {}
     return {
         visibilityMode: normalizeVisibilityMode(settings.visibilityMode, settings.autohide),
         overlayMode: normalizeOverlayMode(settings.overlayMode, settings.spaceMode),
         visibleWorkspace: normalizeVisibleWorkspace(settings.visibleWorkspace),
-        suppressSystemDock: normalizeSuppressSystemDock(settings.suppressSystemDock)
+        suppressSystemDock: normalizeSuppressSystemDock(settings.suppressSystemDock),
+        iconScale: normalizeIconScale(settings.iconScale),
+        surface: normalizeSurface(settings.surface),
+        hoverMagnify: normalizeHoverMagnify(settings.hoverMagnify)
     }
 }
 

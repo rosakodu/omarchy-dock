@@ -87,8 +87,12 @@ Item {
     readonly property bool isBarTransparent: root.barStyleState === "none"
 
     // Static Standard Dock Geometry (Strictly stable, no jumping/twitching on window state)
-    readonly property real slotSize: 42
-    readonly property real iconBaseSize: 24
+    // iconScale (dock-settings.json) multiplies the whole dock
+    property real iconScale: 1.0
+    readonly property real slotSize: Math.round(42 * iconScale)
+    readonly property real iconBaseSize: Math.round(24 * iconScale)
+    // How far the dock slides out of view when hidden: its full thickness plus margin (56 at scale 1)
+    readonly property real slideOutDistance: slotSize + 14
 
     // Live 1D Rail Displacement for Main Dock Bar
     property int dockDragActiveIndex: -1
@@ -429,6 +433,10 @@ Item {
     property bool showBadges: true
     property bool glassmorphism: false
     property real blurOpacity: 0.68
+    property string surface: "auto"
+    readonly property bool usePopupSurface: root.surface === DockSettings.SURFACE_POPUP
+    readonly property bool showDockBorder: root.usePopupSurface || !root.isBarTransparent
+    property bool hoverMagnify: false
     readonly property bool showAppMenu: root.widgetsEnabled && root.dockWidgets && (root.dockWidgets.indexOf("omarchy.apps") !== -1)
     property string appMenuPosition: "left"
     property bool widgetsEnabled: true
@@ -967,6 +975,9 @@ Item {
                 } else {
                     root.suppressSystemDock = normalized.suppressSystemDock
                 }
+                root.iconScale = normalized.iconScale
+                root.surface = normalized.surface
+                root.hoverMagnify = normalized.hoverMagnify
                 if (s.dockEnabled !== undefined) {
                     root.dockEnabled = (s.dockEnabled === true || s.dockEnabled === "true" || s.dockEnabled === 1 || s.dockEnabled === "1")
                 } else {
@@ -1046,6 +1057,9 @@ Item {
             showBadges: root.showBadges,
             glassmorphism: root.glassmorphism,
             blurOpacity: root.blurOpacity,
+            iconScale: root.iconScale,
+            surface: root.surface,
+            hoverMagnify: root.hoverMagnify,
             widgetsEnabled: root.widgetsEnabled,
             appMenuPosition: root.appMenuPosition || "left",
             widgetPosition: root.widgetPosition || "right",
@@ -1607,6 +1621,9 @@ Item {
     }
 
     property var dockBorderSpec: {
+        if (root.usePopupSurface) {
+            return Border.surfaceSpec("popups", "border", Color.popups.border, Math.max(1, Style.space(2)))
+        }
         if (root.isBarTransparent || root.systemBorderSize <= 0) {
             return Border.none()
         }
@@ -2818,18 +2835,22 @@ Item {
                 root.isEditMode = false
             }
 
+            // surface "popup" always uses the popup surface and border; otherwise follow the bar style
             color: {
+                if (root.usePopupSurface) return Color.popups.background
                 if (root.barStyleState === "none") return "transparent"
                 if (root.barStyleState === "glassy") return Util.alpha(Color.bar.background, 0.35)
                 return Color.bar.background
             }
             border.width: {
+                if (root.usePopupSurface) return Border.canUseNative(root.dockBorderSpec) ? Border.uniformWidth(root.dockBorderSpec) : 0
                 if (root.barStyleState === "none") return 0
                 if (root.barStyleState === "glassy") return Border.isNone(root.dockBorderSpec) ? 0 : Math.max(1, Border.uniformWidth(root.dockBorderSpec))
                 if (!Border.canUseNative(root.dockBorderSpec)) return 0
                 return Border.uniformWidth(root.dockBorderSpec)
             }
             border.color: {
+                if (root.usePopupSurface) return Border.canUseNative(root.dockBorderSpec) ? Border.color(root.dockBorderSpec) : "transparent"
                 if (root.barStyleState === "none") return "transparent"
                 if (root.barStyleState === "glassy") {
                     if (Border.isNone(root.dockBorderSpec)) return "transparent"
@@ -2845,7 +2866,7 @@ Item {
 
             Loader {
                 anchors.fill: parent
-                active: root.barStyleState === "opaque" && Border.needsOverlay(root.dockBorderSpec)
+                active: (root.usePopupSurface || root.barStyleState === "opaque") && Border.needsOverlay(root.dockBorderSpec)
                 sourceComponent: DockBorderOverlay {
                     anchors.fill: parent
                     radius: root.systemRounding
@@ -2875,14 +2896,14 @@ Item {
                 id: autohideTranslate
                 x: {
                     if (!root.shouldSlideOut) return 0
-                    if (root.barPosition === "right") return -56
-                    if (root.barPosition === "left") return 56
+                    if (root.barPosition === "right") return -root.slideOutDistance
+                    if (root.barPosition === "left") return root.slideOutDistance
                     return 0
                 }
                 y: {
                     if (!root.shouldSlideOut) return 0
-                    if (root.barPosition === "top") return 56
-                    if (root.barPosition === "bottom") return -56
+                    if (root.barPosition === "top") return root.slideOutDistance
+                    if (root.barPosition === "bottom") return -root.slideOutDistance
                     return 0
                 }
                 Behavior on x { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
@@ -3108,6 +3129,7 @@ Item {
                         shell: root.shell
                         slotSize: root.slotSize
                         iconBaseSize: root.iconBaseSize
+                        hoverScale: DockSettings.hoverScale(root.hoverMagnify)
                         iconRevision: root.iconRevision
                         iconsReady: root.iconsReady
                         systemBorderSize: root.systemBorderSize
