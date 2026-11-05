@@ -129,7 +129,8 @@ Item {
         function toggle(): string { root.toggle(); return "ok" }
         function refresh(): string { return root.refresh() }
         function getBarStyleState(): string { return root.barStyleState }
-        function openWidgetPicker(): string {
+
+    function openWidgetPicker(): string {
             root.openWidgetPicker()
             return "ok"
         }
@@ -152,6 +153,24 @@ Item {
         function setSuppressSystemDock(val: string): string { root.setSuppressSystemDock(val === "true" || val === "1"); return "ok" }
         function importOmarchyPins(): string { return root.importOmarchyPins() }
         function ping(): string { return "ok" }
+        function apps(): string { return root.toggleApps() }
+    }
+
+    IpcHandler {
+        target: "omarchy.dock"
+        function apps(): string { return root.toggleApps() }
+        function refresh(): string { return root.refresh() }
+    }
+
+
+    function toggleApps() {
+        if (appGridLoader && appGridLoader.item) {
+            if (!appGridLoader.item.appLibrary && root.shell && root.shell.appLibrary) {
+                appGridLoader.item.appLibrary = root.shell.appLibrary
+            }
+            appGridLoader.item.toggle()
+        }
+        return "ok"
     }
 
     function openWidgetPicker() {
@@ -1424,7 +1443,7 @@ Item {
             if (mouse.button === Qt.RightButton) {
                 Util.execDetached("omarchy-menu toggle root")
             } else {
-                Util.execDetached("omarchy-menu toggle apps")
+                root.toggleApps()
             }
             return
         }
@@ -3002,7 +3021,7 @@ Item {
                                     if (mouse.button === Qt.RightButton) {
                                         Util.execDetached("omarchy-menu toggle root")
                                     } else {
-                                        Util.execDetached("omarchy-menu toggle apps")
+                                        root.toggleApps()
                                     }
                                     return
                                 }
@@ -3350,7 +3369,7 @@ Item {
                                     if (mouse.button === Qt.RightButton) {
                                         Util.execDetached("omarchy-menu toggle root")
                                     } else {
-                                        Util.execDetached("omarchy-menu toggle apps")
+                                        root.toggleApps()
                                     }
                                     return
                                 }
@@ -3425,6 +3444,27 @@ Item {
     }
 
     // 4. Widget Picker Popup Menu
+    
+    Loader {
+        id: appGridLoader
+        source: "file:///usr/share/omarchy/shell/plugins/dock/AppGrid.qml"
+        active: true
+        onLoaded: {
+            if (item) {
+                item.appLibrary = (root.shell && root.shell.appLibrary) ? root.shell.appLibrary : null
+                item.dock = null
+            }
+        }
+    }
+    Connections {
+        target: (root.shell && root.shell.appLibrary) ? root.shell.appLibrary : null
+        function onAppsChanged() {
+            if (appGridLoader && appGridLoader.item && appGridLoader.item.appLibrary === null) {
+                appGridLoader.item.appLibrary = root.shell.appLibrary
+            }
+        }
+    }
+
     WidgetPickerPopup {
         id: widgetPicker
         root: root
