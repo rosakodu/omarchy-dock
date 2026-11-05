@@ -17,6 +17,11 @@ PanelWindow {
     property var shell: null
     property bool opened: false
 
+    Translations {
+        id: strings
+        directory: Qt.resolvedUrl("../i18n")
+    }
+
     onOpenedChanged: {
         if (pickerWindow.root && typeof pickerWindow.root.handleWidgetPickerOpenedChanged === "function") {
             pickerWindow.root.handleWidgetPickerOpenedChanged(opened)
@@ -85,6 +90,8 @@ PanelWindow {
             anchors.fill: parent
             anchors.margins: 16
             spacing: 10
+            LayoutMirroring.enabled: I18n.rightToLeft
+            LayoutMirroring.childrenInherit: true
 
             // 1. Header Row
             RowLayout {
@@ -92,7 +99,7 @@ PanelWindow {
                 spacing: 8
 
                 Text {
-                    text: "Dock Widgets"
+                    text: strings.t("picker.title")
                     textFormat: Text.PlainText
                     font.family: Style.font.family
                     font.pixelSize: 14
@@ -119,7 +126,7 @@ PanelWindow {
                     Layout.fillWidth: true
                     height: 34
                     radius: 7
-                    color: Color.composed("menu.text", "menu.text-alpha", Color.text, 0.05)
+                    color: Color.composed("menu.text", "menu.text-alpha", Color.foreground, 0.05)
 
                     RowLayout {
                         anchors.fill: parent
@@ -128,7 +135,7 @@ PanelWindow {
                         spacing: 8
 
                         Text {
-                            text: "App Menu position:"
+                            text: strings.t("picker.appMenuPosition")
                             textFormat: Text.PlainText
                             font.family: Style.font.family
                             font.pixelSize: 11
@@ -146,12 +153,12 @@ PanelWindow {
                                 height: 26
                                 radius: 5
                                 readonly property bool isLeft: (!pickerWindow.root || pickerWindow.root.appMenuPosition !== "right")
-                                color: isLeft ? Color.accent : (posAppLeftMouse.containsMouse ? Color.composed("menu.text", "menu.text-alpha", Color.text, 0.12) : "transparent")
+                                color: isLeft ? Color.accent : (posAppLeftMouse.containsMouse ? Color.composed("menu.text", "menu.text-alpha", Color.foreground, 0.12) : "transparent")
                                 Behavior on color { ColorAnimation { duration: 120 } }
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: "Left"
+                                    text: strings.t("picker.left")
                                     textFormat: Text.PlainText
                                     font.family: Style.font.family
                                     font.pixelSize: 11
@@ -180,12 +187,12 @@ PanelWindow {
                                 height: 26
                                 radius: 5
                                 readonly property bool isRight: (pickerWindow.root && pickerWindow.root.appMenuPosition === "right")
-                                color: isRight ? Color.accent : (posAppRightMouse.containsMouse ? Color.composed("menu.text", "menu.text-alpha", Color.text, 0.12) : "transparent")
+                                color: isRight ? Color.accent : (posAppRightMouse.containsMouse ? Color.composed("menu.text", "menu.text-alpha", Color.foreground, 0.12) : "transparent")
                                 Behavior on color { ColorAnimation { duration: 120 } }
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: "Right"
+                                    text: strings.t("picker.right")
                                     textFormat: Text.PlainText
                                     font.family: Style.font.family
                                     font.pixelSize: 11
@@ -219,10 +226,10 @@ PanelWindow {
                     height: 38
                     radius: 7
 
-                    readonly property bool isInDock: !!(pickerWindow.root && pickerWindow.root.dockWidgets && pickerWindow.root.dockWidgets.indexOf("omarchy.apps") !== -1)
+                    readonly property bool isInDock: (pickerWindow.root && pickerWindow.root.dockWidgets && pickerWindow.root.dockWidgets.indexOf("omarchy.apps") !== -1)
                     readonly property bool isHovered: appItemMouse.containsMouse
 
-                    color: isInDock ? Color.composed("menu.selectedBackground", "menu.selectedBackground-alpha", Color.accent, isHovered ? 0.18 : 0.10) : (isHovered ? Color.composed("menu.text", "menu.text-alpha", Color.text, 0.06) : "transparent")
+                    color: isInDock ? Color.composed("menu.selectedBackground", "menu.selectedBackground-alpha", Color.accent, isHovered ? 0.18 : 0.10) : (isHovered ? Color.composed("menu.text", "menu.text-alpha", Color.foreground, 0.06) : "transparent")
                     border.width: 1
                     border.color: isInDock ? Color.composed("accent", "accent-alpha", Color.accent, 0.4) : (isHovered ? Color.composed("menu.border", "menu.border-alpha", Color.border, 0.2) : "transparent")
                     Behavior on color { ColorAnimation { duration: 120 } }
@@ -240,7 +247,7 @@ PanelWindow {
                             Layout.preferredHeight: 26
                             Layout.alignment: Qt.AlignVCenter
                             radius: 5
-                            color: appMenuItemRow.isInDock ? Color.composed("accent", "accent-alpha", Color.accent, 0.2) : Color.composed("menu.text", "menu.text-alpha", Color.text, 0.08)
+                            color: appMenuItemRow.isInDock ? Color.composed("accent", "accent-alpha", Color.accent, 0.2) : Color.composed("menu.text", "menu.text-alpha", Color.foreground, 0.08)
 
                             DockGlyph {
                                 anchors.centerIn: parent
@@ -260,7 +267,7 @@ PanelWindow {
                             spacing: 8
 
                             Text {
-                                text: "Apps"
+                                text: strings.t("picker.apps")
                                 textFormat: Text.PlainText
                                 font.family: Style.font.family
                                 font.pixelSize: 12
@@ -273,13 +280,13 @@ PanelWindow {
                                 height: 16
                                 width: appBadgeText.implicitWidth + 8
                                 radius: 4
-                                color: appMenuItemRow.isInDock ? Color.composed("accent", "accent-alpha", Color.accent, 0.25) : Color.composed("menu.text", "menu.text-alpha", Color.text, 0.08)
+                                color: appMenuItemRow.isInDock ? Color.composed("accent", "accent-alpha", Color.accent, 0.25) : Color.composed("menu.text", "menu.text-alpha", Color.foreground, 0.08)
                                 anchors.verticalCenter: parent.verticalCenter
 
                                 Text {
                                     id: appBadgeText
                                     anchors.centerIn: parent
-                                    text: appMenuItemRow.isInDock ? "Dock" : "Off"
+                                    text: appMenuItemRow.isInDock ? strings.t("picker.dock") : strings.t("picker.off")
                                     textFormat: Text.PlainText
                                     font.family: Style.font.family
                                     font.pixelSize: 9
@@ -346,7 +353,7 @@ PanelWindow {
                     Layout.fillWidth: true
                     height: 34
                     radius: 7
-                    color: Color.composed("menu.text", "menu.text-alpha", Color.text, 0.05)
+                    color: Color.composed("menu.text", "menu.text-alpha", Color.foreground, 0.05)
 
                     RowLayout {
                         anchors.fill: parent
@@ -355,7 +362,7 @@ PanelWindow {
                         spacing: 8
 
                         Text {
-                            text: "Widget position:"
+                            text: strings.t("picker.widgetPosition")
                             textFormat: Text.PlainText
                             font.family: Style.font.family
                             font.pixelSize: 11
@@ -373,12 +380,12 @@ PanelWindow {
                                 height: 26
                                 radius: 5
                                 readonly property bool isLeft: (pickerWindow.root && pickerWindow.root.widgetPosition === "left")
-                                color: isLeft ? Color.accent : (posLeftMouse.containsMouse ? Color.composed("menu.text", "menu.text-alpha", Color.text, 0.12) : "transparent")
+                                color: isLeft ? Color.accent : (posLeftMouse.containsMouse ? Color.composed("menu.text", "menu.text-alpha", Color.foreground, 0.12) : "transparent")
                                 Behavior on color { ColorAnimation { duration: 120 } }
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: "Left"
+                                    text: strings.t("picker.left")
                                     textFormat: Text.PlainText
                                     font.family: Style.font.family
                                     font.pixelSize: 11
@@ -407,12 +414,12 @@ PanelWindow {
                                 height: 26
                                 radius: 5
                                 readonly property bool isRight: (!pickerWindow.root || pickerWindow.root.widgetPosition !== "left")
-                                color: isRight ? Color.accent : (posRightMouse.containsMouse ? Color.composed("menu.text", "menu.text-alpha", Color.text, 0.12) : "transparent")
+                                color: isRight ? Color.accent : (posRightMouse.containsMouse ? Color.composed("menu.text", "menu.text-alpha", Color.foreground, 0.12) : "transparent")
                                 Behavior on color { ColorAnimation { duration: 120 } }
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: "Right"
+                                    text: strings.t("picker.right")
                                     textFormat: Text.PlainText
                                     font.family: Style.font.family
                                     font.pixelSize: 11
@@ -490,11 +497,11 @@ PanelWindow {
                         height: 38
                         radius: 7
 
-                        readonly property bool isInDock: !!(pickerWindow.root && pickerWindow.root.dockWidgets && pickerWindow.root.dockWidgets.indexOf(modelData.id) !== -1)
-                        readonly property bool isInBar: !!(pickerWindow.shell && pickerWindow.shell.pluginRegistry && typeof pickerWindow.shell.pluginRegistry.inBar === "function" && pickerWindow.shell.pluginRegistry.inBar(modelData.id))
+                        readonly property bool isInDock: (pickerWindow.root && pickerWindow.root.dockWidgets && pickerWindow.root.dockWidgets.indexOf(modelData.id) !== -1)
+                        readonly property bool isInBar: pickerWindow.shell && pickerWindow.shell.pluginRegistry && typeof pickerWindow.shell.pluginRegistry.inBar === "function" && pickerWindow.shell.pluginRegistry.inBar(modelData.id)
                         readonly property bool isHovered: itemMouse.containsMouse
 
-                        color: isInDock ? Color.composed("menu.selectedBackground", "menu.selectedBackground-alpha", Color.accent, isHovered ? 0.18 : 0.10) : (isHovered ? Color.composed("menu.text", "menu.text-alpha", Color.text, 0.06) : "transparent")
+                        color: isInDock ? Color.composed("menu.selectedBackground", "menu.selectedBackground-alpha", Color.accent, isHovered ? 0.18 : 0.10) : (isHovered ? Color.composed("menu.text", "menu.text-alpha", Color.foreground, 0.06) : "transparent")
                         border.width: 1
                         border.color: isInDock ? Color.composed("accent", "accent-alpha", Color.accent, 0.4) : (isHovered ? Color.composed("menu.border", "menu.border-alpha", Color.border, 0.2) : "transparent")
                         Behavior on color { ColorAnimation { duration: 120 } }
@@ -512,7 +519,7 @@ PanelWindow {
                                 Layout.preferredHeight: 26
                                 Layout.alignment: Qt.AlignVCenter
                                 radius: 5
-                                color: rowItem.isInDock ? Color.composed("accent", "accent-alpha", Color.accent, 0.2) : Color.composed("menu.text", "menu.text-alpha", Color.text, 0.08)
+                                color: rowItem.isInDock ? Color.composed("accent", "accent-alpha", Color.accent, 0.2) : Color.composed("menu.text", "menu.text-alpha", Color.foreground, 0.08)
 
                                 DockGlyph {
                                     anchors.centerIn: parent
@@ -532,7 +539,10 @@ PanelWindow {
                                 spacing: 8
 
                                 Text {
-                                    text: modelData.name
+                                    text: {
+                                        var key = "widget." + modelData.id.replace("omarchy.", "")
+                                        return strings.t(key, modelData.name)
+                                    }
                                     textFormat: Text.PlainText
                                     font.family: Style.font.family
                                     font.pixelSize: 12
@@ -545,13 +555,13 @@ PanelWindow {
                                     height: 16
                                     width: badgeText.implicitWidth + 8
                                     radius: 4
-                                    color: rowItem.isInDock ? Color.composed("accent", "accent-alpha", Color.accent, 0.25) : Color.composed("menu.text", "menu.text-alpha", Color.text, 0.08)
+                                    color: rowItem.isInDock ? Color.composed("accent", "accent-alpha", Color.accent, 0.25) : Color.composed("menu.text", "menu.text-alpha", Color.foreground, 0.08)
                                     anchors.verticalCenter: parent.verticalCenter
 
                                     Text {
                                         id: badgeText
                                         anchors.centerIn: parent
-                                        text: rowItem.isInDock ? "Dock" : "Tray"
+                                        text: rowItem.isInDock ? strings.t("picker.dock") : strings.t("picker.tray")
                                         textFormat: Text.PlainText
                                         font.family: Style.font.family
                                         font.pixelSize: 9

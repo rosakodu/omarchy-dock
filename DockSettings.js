@@ -40,12 +40,18 @@ function normalizeVisibleWorkspace(value) {
     return workspace === "" || workspace.toLowerCase() === "all" ? "all" : workspace
 }
 
+function normalizeSuppressSystemDock(value) {
+    if (value === false || value === "false" || value === 0 || value === "0") return false
+    return true
+}
+
 function normalize(raw) {
     var settings = raw && typeof raw === "object" ? raw : {}
     return {
         visibilityMode: normalizeVisibilityMode(settings.visibilityMode, settings.autohide),
         overlayMode: normalizeOverlayMode(settings.overlayMode, settings.spaceMode),
-        visibleWorkspace: normalizeVisibleWorkspace(settings.visibleWorkspace)
+        visibleWorkspace: normalizeVisibleWorkspace(settings.visibleWorkspace),
+        suppressSystemDock: normalizeSuppressSystemDock(settings.suppressSystemDock)
     }
 }
 
@@ -105,27 +111,6 @@ function releaseInteractionVisibilityOverride(owned, previousOverride, currentOv
     return owned === true
         ? normalizeVisibilityOverride(previousOverride)
         : normalizeVisibilityOverride(currentOverride)
-}
-
-// Which screen's dock should slide in on a reveal. Returns "" to mean "every
-// screen" (always mode, or an explicit visibleWorkspace selector, both of
-// which are already single- or all-screen by construction). Otherwise the
-// screen that triggered the reveal wins, falling back to the focused screen
-// for reveals with no specific trigger (e.g. the keyboard toggle finding no
-// focused monitor, or the empty-workspace auto-reveal).
-function screenRevealTarget(visibilityMode, visibleWorkspace, revealMonitorName, focusedMonitorName) {
-    var mode = normalizeVisibilityMode(visibilityMode, false)
-    if (mode === VISIBILITY_ALWAYS) return ""
-    if (normalizeVisibleWorkspace(visibleWorkspace) !== "all") return ""
-    if (revealMonitorName) return String(revealMonitorName)
-    if (focusedMonitorName) return String(focusedMonitorName)
-    return ""
-}
-
-// Per-screen slide-out state: slid out globally, or slid out because another
-// screen is the current reveal target.
-function screenSlidesOut(globalShouldSlideOut, target, screenName) {
-    return globalShouldSlideOut === true || (target !== "" && String(screenName) !== target)
 }
 
 function dockScreenTarget(visibleWorkspace, visibilityMode, visibilityOverride) {

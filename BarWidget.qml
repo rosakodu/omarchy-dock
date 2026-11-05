@@ -22,8 +22,14 @@ BarWidget {
   property bool showFolderTitles: true
   property bool showBadges: true
   property bool widgetsEnabled: true
+  property bool suppressSystemDock: true
   readonly property bool settingsOpen: settingsWindow.open
   property bool isSavingSettings: false
+
+  Translations {
+    id: strings
+    directory: Qt.resolvedUrl("i18n")
+  }
 
   Timer {
     id: saveSettingsTimer
@@ -86,6 +92,11 @@ BarWidget {
         if (s && s.widgetsEnabled !== undefined) {
           root.widgetsEnabled = (s.widgetsEnabled === true)
         }
+        if (s && s.suppressSystemDock !== undefined) {
+          root.suppressSystemDock = (s.suppressSystemDock === true || s.suppressSystemDock === "true")
+        } else {
+          root.suppressSystemDock = normalized.suppressSystemDock
+        }
         if (s && s.appMenuPosition !== undefined) {
           root.appMenuPosition = s.appMenuPosition
         }
@@ -122,6 +133,7 @@ BarWidget {
     s.showFolderTitles = root.showFolderTitles
     s.showBadges = root.showBadges
     s.widgetsEnabled = root.widgetsEnabled
+    s.suppressSystemDock = root.suppressSystemDock
     s.appMenuPosition = root.appMenuPosition || s.appMenuPosition || "left"
     s.widgetPosition = root.widgetPosition || s.widgetPosition || "right"
     s.widgetSavedPositions = root.widgetSavedPositions || s.widgetSavedPositions || {}
@@ -208,7 +220,7 @@ BarWidget {
 
   function buildWorkspaceOptions() {
     var opts = [
-      { value: "all", label: "All workspaces" }
+      { value: "all", label: strings.t("dock.allWorkspaces") }
     ]
     var existingIds = [1, 2, 3, 4, 5]
     if (Hyprland && Hyprland.workspaces && Hyprland.workspaces.values) {
@@ -229,7 +241,7 @@ BarWidget {
     existingIds.sort(function(a, b) { return a - b })
     for (var j = 0; j < existingIds.length; j++) {
       var id = existingIds[j]
-      var label = (id === 10 || id === 0) ? "Workspace 0" : ("Workspace " + id)
+      var label = (id === 10 || id === 0) ? strings.t("dock.workspace").arg(0) : strings.t("dock.workspace").arg(id)
       opts.push({
         value: String(id),
         label: label
@@ -268,6 +280,14 @@ BarWidget {
     }
   }
 
+  function setSuppressSystemDock(val) {
+    root.suppressSystemDock = val
+    saveSettings()
+    if (root.bar && typeof root.bar.run === "function") {
+      root.bar.run("omarchy-shell rosakodu.dock setSuppressSystemDock " + (val ? "true" : "false"))
+    }
+  }
+
   readonly property bool opened: settingsWindow.open
   function open() { settingsWindow.open = true }
   function close() { settingsWindow.open = false }
@@ -282,7 +302,7 @@ BarWidget {
     anchors.fill: parent
     bar: root.bar
     text: "···"
-    tooltipText: "Dock Settings"
+    tooltipText: strings.t("dock.settings")
     onPressed: function(buttonCode) {
       if (buttonCode === Qt.LeftButton) {
         root.toggle()
@@ -290,16 +310,13 @@ BarWidget {
     }
   }
 
-  // Standard Omarchy KeyboardPanel (Exact same screen level, gap, and animation as Weather & Audio),
-  // anchored under this widget's own button rather than centered on the bar.
+  // Standard Omarchy KeyboardPanel (Exact same screen level, gap, and animation as Weather & Audio)
   KeyboardPanel {
     id: settingsWindow
     anchorItem: button
     owner: root
     bar: root.bar
-    // Anchor to the widget itself (left/center/right section) instead of the bar's
-    // midpoint; KeyboardPanel still clamps the card on-screen via its margin.
-    centerOnBar: false
+    centerOnBar: true
     contentWidth: (Style && typeof Style.space === "function") ? Style.space(410) : 410
     contentHeight: settingsWindow.fittedContentHeight(cardColumn.implicitHeight + 6)
     borderSpec: Border.localOrSurfaceSpec("popups", "border", Color.accent, Color.accent, Math.max(1, Style.space(2)))
@@ -310,6 +327,8 @@ BarWidget {
       anchors.right: parent.right
       anchors.top: parent.top
       spacing: 10
+      LayoutMirroring.enabled: I18n.rightToLeft
+      LayoutMirroring.childrenInherit: true
 
         // Header Row
         RowLayout {
@@ -326,7 +345,7 @@ BarWidget {
           }
 
           Text {
-            text: "Dock Settings"
+            text: strings.t("dock.settings")
             textFormat: Text.PlainText
             font.family: Style.font.family
             font.pixelSize: 13
@@ -365,7 +384,7 @@ BarWidget {
 
               Text {
                 Layout.fillWidth: true
-                text: "Enable dock"
+                text: strings.t("dock.enable")
                 textFormat: Text.PlainText
                 font.family: Style.font.family
                 font.pixelSize: 12
@@ -376,7 +395,7 @@ BarWidget {
 
               Text {
                 Layout.fillWidth: true
-                text: "Show dock panel on screen"
+                text: strings.t("dock.enableDesc")
                 textFormat: Text.PlainText
                 font.family: Style.font.family
                 font.pixelSize: 10
@@ -456,7 +475,7 @@ BarWidget {
 
               Text {
                 Layout.fillWidth: true
-                text: "Autohide dock"
+                text: strings.t("dock.autohide")
                 textFormat: Text.PlainText
                 font.family: Style.font.family
                 font.pixelSize: 12
@@ -467,7 +486,7 @@ BarWidget {
 
               Text {
                 Layout.fillWidth: true
-                text: "Reveal on screen-edge hover"
+                text: strings.t("dock.autohideDesc")
                 textFormat: Text.PlainText
                 font.family: Style.font.family
                 font.pixelSize: 10
@@ -537,7 +556,7 @@ BarWidget {
 
               Text {
                 Layout.fillWidth: true
-                text: "Keyboard shortcut"
+                text: strings.t("dock.keybind")
                 textFormat: Text.PlainText
                 font.family: Style.font.family
                 font.pixelSize: 12
@@ -548,7 +567,7 @@ BarWidget {
 
               Text {
                 Layout.fillWidth: true
-                text: "Summon dock on demand"
+                text: strings.t("dock.keybindDesc")
                 textFormat: Text.PlainText
                 font.family: Style.font.family
                 font.pixelSize: 10
@@ -612,7 +631,7 @@ BarWidget {
           Text {
             Layout.fillWidth: true
             Layout.leftMargin: 6
-            text: "Add to ~/.config/hypr/bindings.lua:"
+            text: strings.t("dock.keybindHint")
             textFormat: Text.PlainText
             font.family: Style.font.family
             font.pixelSize: 10
@@ -651,7 +670,7 @@ BarWidget {
                 id: cmdText
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignVCenter
-                text: cmdPill.copied ? "✓ Copied to clipboard!" : "o.bind(\"SUPER + D\", \"Toggle Dock\",\n  \"omarchy-shell -q rosakodu.dock toggleReveal\")"
+                text: cmdPill.copied ? strings.t("dock.copied") : "o.bind(\"SUPER + D\", \"Toggle Dock\",\n  \"omarchy-shell -q rosakodu.dock toggleReveal\")"
                 textFormat: Text.PlainText
                 font.family: !cmdPill.copied ? (Style.font.monospace || "monospace") : Style.font.family
                 font.pixelSize: !cmdPill.copied ? 9 : 10
@@ -715,7 +734,7 @@ BarWidget {
 
               Text {
                 Layout.fillWidth: true
-                text: "Overlay mode"
+                text: strings.t("dock.overlay")
                 textFormat: Text.PlainText
                 font.family: Style.font.family
                 font.pixelSize: 12
@@ -726,7 +745,7 @@ BarWidget {
 
               Text {
                 Layout.fillWidth: true
-                text: "Float on top of application windows"
+                text: strings.t("dock.overlayDesc")
                 textFormat: Text.PlainText
                 font.family: Style.font.family
                 font.pixelSize: 10
@@ -793,7 +812,7 @@ BarWidget {
 
               Text {
                 Layout.fillWidth: true
-                text: "Notification badges"
+                text: strings.t("dock.badges")
                 textFormat: Text.PlainText
                 font.family: Style.font.family
                 font.pixelSize: 12
@@ -804,7 +823,7 @@ BarWidget {
 
               Text {
                 Layout.fillWidth: true
-                text: "Show unread counter on app icons"
+                text: strings.t("dock.badgesDesc")
                 textFormat: Text.PlainText
                 font.family: Style.font.family
                 font.pixelSize: 10
@@ -871,7 +890,7 @@ BarWidget {
 
               Text {
                 Layout.fillWidth: true
-                text: "Dock widgets"
+                text: strings.t("dock.widgets")
                 textFormat: Text.PlainText
                 font.family: Style.font.family
                 font.pixelSize: 12
@@ -882,7 +901,7 @@ BarWidget {
 
               Text {
                 Layout.fillWidth: true
-                text: "Integrate app menu and bar widgets"
+                text: strings.t("dock.widgetsDesc")
                 textFormat: Text.PlainText
                 font.family: Style.font.family
                 font.pixelSize: 10
@@ -931,11 +950,11 @@ BarWidget {
         Rectangle {
           id: configureWidgetsRow
           Layout.fillWidth: true
-          Layout.preferredHeight: 40
+          Layout.preferredHeight: 38
           radius: 8
           opacity: root.widgetsEnabled ? 1.0 : 0.4
           enabled: root.widgetsEnabled
-          color: configureWidgetsMouse.containsMouse ? Color.composed("accent", "accent-alpha", Color.accent, 0.2) : Color.composed("popups.text", "popups.text-alpha", Color.text, 0.08)
+          color: configureWidgetsMouse.containsMouse ? Color.composed("accent", "accent-alpha", Color.accent, 0.2) : Color.composed("popups.text", "popups.text-alpha", Color.foreground, 0.08)
           border.width: 1
           border.color: configureWidgetsMouse.containsMouse ? Color.accent : "transparent"
           Behavior on color { ColorAnimation { duration: 120 } }
@@ -944,7 +963,7 @@ BarWidget {
 
           Text {
             anchors.centerIn: parent
-            text: "Configure dock widgets"
+            text: strings.t("dock.configureWidgets")
             textFormat: Text.PlainText
             font.family: Style.font.family
             font.pixelSize: 11
@@ -970,6 +989,128 @@ BarWidget {
                 root.bar.run("omarchy-shell rosakodu.dock openWidgetPicker")
               } else {
                 Util.execDetached("omarchy-shell rosakodu.dock openWidgetPicker")
+              }
+            }
+          }
+        }
+
+        // Toggle Suppress System Dock Row
+        Rectangle {
+          id: suppressSystemDockRow
+          Layout.fillWidth: true
+          height: 42
+          radius: 8
+          color: toggleSuppressMouse.containsMouse ? Style.hoverFillFor(Color.popups.text, Color.accent) : "transparent"
+          Behavior on color { ColorAnimation { duration: 120 } }
+
+          RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 10
+            anchors.rightMargin: 10
+            spacing: 8
+
+            ColumnLayout {
+              Layout.fillWidth: true
+              Layout.alignment: Qt.AlignVCenter
+              spacing: 1
+
+              Text {
+                Layout.fillWidth: true
+                text: strings.t("dock.suppressSystemDock")
+                textFormat: Text.PlainText
+                font.family: Style.font.family
+                font.pixelSize: 12
+                font.bold: true
+                color: Color.popups.text
+                elide: Text.ElideRight
+              }
+
+              Text {
+                Layout.fillWidth: true
+                text: strings.t("dock.suppressSystemDockDesc")
+                textFormat: Text.PlainText
+                font.family: Style.font.family
+                font.pixelSize: 10
+                color: Color.muted
+                elide: Text.ElideRight
+              }
+            }
+
+            Rectangle {
+              id: switchSuppressTrack
+              Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
+              Layout.preferredWidth: 36
+              Layout.preferredHeight: 20
+              width: 36
+              height: 20
+              radius: 10
+              color: root.suppressSystemDock ? Color.accent : Qt.rgba(Color.popups.text.r, Color.popups.text.g, Color.popups.text.b, 0.25)
+              Behavior on color { ColorAnimation { duration: 180 } }
+
+              Rectangle {
+                id: switchSuppressThumb
+                width: 14
+                height: 14
+                radius: 7
+                anchors.verticalCenter: parent.verticalCenter
+                x: root.suppressSystemDock ? (switchSuppressTrack.width - width - 3) : 3
+                color: root.suppressSystemDock ? Color.background : Color.popups.text
+                Behavior on x { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+              }
+            }
+          }
+
+          MouseArea {
+            id: toggleSuppressMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+              root.setSuppressSystemDock(!root.suppressSystemDock)
+            }
+          }
+        }
+
+        // Import Omarchy Pins Action Button
+        Rectangle {
+          id: importOmarchyPinsRow
+          Layout.fillWidth: true
+          Layout.preferredHeight: 38
+          radius: 8
+          color: importOmarchyPinsMouse.containsMouse ? Color.composed("accent", "accent-alpha", Color.accent, 0.2) : Color.composed("popups.text", "popups.text-alpha", Color.foreground, 0.08)
+          border.width: 1
+          border.color: importOmarchyPinsMouse.containsMouse ? Color.accent : "transparent"
+          Behavior on color { ColorAnimation { duration: 120 } }
+          Behavior on border.color { ColorAnimation { duration: 120 } }
+
+          Text {
+            anchors.centerIn: parent
+            text: strings.t("dock.importOmarchyPins")
+            textFormat: Text.PlainText
+            font.family: Style.font.family
+            font.pixelSize: 11
+            font.bold: true
+            color: importOmarchyPinsMouse.containsMouse ? Color.accent : Color.popups.text
+            renderType: Text.CurveRendering
+            font.hintingPreference: Font.PreferNoHinting
+            Behavior on color { ColorAnimation { duration: 120 } }
+          }
+
+          MouseArea {
+            id: importOmarchyPinsMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+              root.close()
+              var sh = root.shell || (root.bar ? root.bar.shell : null)
+              var dockSvc = (sh && typeof sh.serviceFor === "function") ? sh.serviceFor("rosakodu.dock") : null
+              if (dockSvc && typeof dockSvc.importOmarchyPins === "function") {
+                dockSvc.importOmarchyPins()
+              } else if (root.bar && typeof root.bar.run === "function") {
+                root.bar.run("omarchy-shell rosakodu.dock importOmarchyPins")
+              } else {
+                Util.execDetached("omarchy-shell rosakodu.dock importOmarchyPins")
               }
             }
           }

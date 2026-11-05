@@ -6,10 +6,25 @@ import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
 import "../DockModel.js" as DockModel
+import "../DockAutoName.js" as DockAutoName
 import ".."
 
 PanelWindow {
     id: stackWindow
+
+    Translations {
+        id: strings
+        directory: Qt.resolvedUrl("../i18n")
+    }
+
+    function localizedFolderName(rawName) {
+        if (!rawName) return strings.t("folder.default")
+        var i18nKey = DockAutoName.getCategoryI18nKey ? DockAutoName.getCategoryI18nKey(rawName) : (DockAutoName.CATEGORY_I18N_MAP ? DockAutoName.CATEGORY_I18N_MAP[rawName] : null)
+        if (i18nKey) {
+            return strings.t(i18nKey, rawName)
+        }
+        return rawName
+    }
 
     required property var root
     required property var dockWindow
@@ -55,8 +70,8 @@ PanelWindow {
             z: 0
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             onClicked: function(mouse) {
-                if (stackWindow.root.isEditingFolderTitle && titleInputLoader.item) {
-                    titleInputLoader.item.saveAndClose()
+                if (stackWindow.root.isEditingFolderTitle && typeof titleInput !== "undefined") {
+                    titleInput.saveAndClose()
                 }
                 stackWindow.root.activeStackItem = null
                 stackWindow.root.isEditMode = false
@@ -70,6 +85,8 @@ PanelWindow {
             z: 1
             anchors.centerIn: parent
             focus: true
+            LayoutMirroring.enabled: I18n.rightToLeft
+            LayoutMirroring.childrenInherit: true
 
             HoverHandler {
                 id: stackCardHover
@@ -88,6 +105,9 @@ PanelWindow {
             Keys.onEscapePressed: function(event) {
                 event.accepted = true
                 if (stackWindow.root.isEditingFolderTitle) {
+                    if (typeof titleInput !== "undefined") {
+                        titleInput.text = (stackWindow.root.activeStackItem && stackWindow.root.activeStackItem.name !== undefined) ? stackWindow.root.activeStackItem.name : ""
+                    }
                     stackWindow.root.isEditingFolderTitle = false
                     stackCard.forceActiveFocus()
                     return
@@ -134,8 +154,8 @@ PanelWindow {
                 acceptedButtons: Qt.LeftButton | Qt.RightButton
                 cursorShape: (stackWindow.root.folderDragActiveIndex >= 0) ? Qt.BlankCursor : (stackWindow.root.isEditMode ? Qt.PointingHandCursor : Qt.ArrowCursor)
                 onClicked: function(mouse) {
-                    if (stackWindow.root.isEditingFolderTitle && titleInputLoader.item) {
-                        titleInputLoader.item.saveAndClose()
+                    if (stackWindow.root.isEditingFolderTitle && typeof titleInput !== "undefined") {
+                        titleInput.saveAndClose()
                     }
                     if (mouse.button === Qt.RightButton || mouse.button === Qt.LeftButton) {
                         stackWindow.root.isEditMode = false
@@ -156,7 +176,7 @@ PanelWindow {
                 // Silky smooth wiggle animation on hover and in edit mode
                 SequentialAnimation {
                     id: titleJiggleAnim
-                    running: (stackWindow.root.isEditMode || titleHoverArea.containsMouse) && !stackWindow.root.isEditingFolderTitle
+                    running: (stackWindow.root.isEditMode || titleHoverArea.containsMouse) && !stackWindow.root.isEditingFolderTitle && !titleInput.activeFocus
                     loops: Animation.Infinite
 
                     NumberAnimation {
@@ -182,11 +202,11 @@ PanelWindow {
                     to: 0.0
                     duration: 120
                     easing.type: Easing.OutCubic
-                    running: (!stackWindow.root.isEditMode && !titleHoverArea.containsMouse || stackWindow.root.isEditingFolderTitle) && titleContainer.rotation !== 0.0
+                    running: (!stackWindow.root.isEditMode && !titleHoverArea.containsMouse || stackWindow.root.isEditingFolderTitle || titleInput.activeFocus) && titleContainer.rotation !== 0.0
                 }
 
                 readonly property real availableTitleWidth: Math.max(10, width - 16)
-                readonly property bool needsMarquee: !stackWindow.root.isEditingFolderTitle && (titleLabel.implicitWidth > availableTitleWidth)
+                readonly property bool needsMarquee: !stackWindow.root.isEditingFolderTitle && !titleInput.activeFocus && (titleLabel.implicitWidth > availableTitleWidth)
                 readonly property real scrollDistance: Math.max(0, titleLabel.implicitWidth - availableTitleWidth)
                 property real marqueeOffset: 0
 
@@ -203,10 +223,10 @@ PanelWindow {
                     Rectangle {
                         anchors.fill: parent
                         radius: 6
-                        color: stackWindow.root.isEditingFolderTitle
+                        color: (stackWindow.root.isEditingFolderTitle || titleInput.activeFocus)
                             ? Style.hoverFillFor(Color.popups.text, Color.accent)
                             : (titleHoverArea.containsMouse ? Style.hoverFillFor(Color.popups.text, Color.accent) : "transparent")
-                        border.width: stackWindow.root.isEditingFolderTitle ? 1 : 0
+                        border.width: (stackWindow.root.isEditingFolderTitle || titleInput.activeFocus) ? 1 : 0
                         border.color: Color.accent
                         Behavior on color { ColorAnimation { duration: 150 } }
                     }
@@ -248,7 +268,7 @@ PanelWindow {
                             id: titleLabel
                             x: titleContainer.needsMarquee ? titleContainer.marqueeOffset : Math.round((parent.width - implicitWidth) / 2)
                             anchors.verticalCenter: parent.verticalCenter
-                            text: (stackWindow.root.activeStackItem && stackWindow.root.activeStackItem.name !== undefined) ? stackWindow.root.activeStackItem.name : ""
+                            text: (stackWindow.root.activeStackItem && stackWindow.root.activeStackItem.name !== undefined) ? stackWindow.localizedFolderName(stackWindow.root.activeStackItem.name) : ""
                             textFormat: Text.PlainText
                             font.family: Style.font.family
                             font.pixelSize: 12
@@ -260,107 +280,53 @@ PanelWindow {
                         }
                     }
 
-                    // === EDIT: TextInput dynamically loaded ONLY during folder renaming ===
-                    Loader {
-                        id: titleInputLoader
+                    // === EDIT: TextInput с прокруткой, виден только при фокусе ===
+                    TextInput {
+                        id: titleInput
                         anchors.centerIn: parent
                         width: parent.width - 12
-                        active: stackWindow.root.isEditingFolderTitle
+                        visible: stackWindow.root.isEditingFolderTitle
+                        enabled: stackWindow.root.isEditingFolderTitle
                         focus: stackWindow.root.isEditingFolderTitle
+                        text: (stackWindow.root.activeStackItem && stackWindow.root.activeStackItem.name !== undefined) ? stackWindow.root.activeStackItem.name : ""
+                        font.family: Style.font.family
+                        font.pixelSize: 12
+                        font.bold: true
+                        color: Color.popups.text
+                        selectByMouse: true
+                        cursorVisible: true
+                        clip: true
+                        horizontalAlignment: Text.AlignHCenter
 
-                        sourceComponent: TextInput {
-                            id: titleInput
-                            width: parent ? parent.width : 0
-                            readOnly: true
-                            maximumLength: 64
-                            text: (stackWindow.root.activeStackItem && stackWindow.root.activeStackItem.name !== undefined) ? stackWindow.root.activeStackItem.name : ""
-                            font.family: Style.font.family
-                            font.pixelSize: 12
-                            font.bold: true
-                            color: Color.popups.text
-                            selectByMouse: true
-                            cursorVisible: true
-                            clip: true
-                            horizontalAlignment: Text.AlignHCenter
-
-                            Component.onCompleted: {
+                        onVisibleChanged: {
+                            if (visible && stackWindow.root.activeStackItem) {
+                                text = (stackWindow.root.activeStackItem.name !== undefined) ? stackWindow.root.activeStackItem.name : ""
                                 selectAll()
                                 forceActiveFocus()
                             }
-
-                            function saveAndClose() {
-                                var n = text.trim()
-                                if (stackWindow.root.activeStackItem) {
-                                    stackWindow.root.setPinned(DockModel.renameStack(stackWindow.root.pinnedIds, stackWindow.root.activeStackItem.id, n))
-                                    stackWindow.root.activeStackItem.name = n
-                                }
-                                stackWindow.root.isEditingFolderTitle = false
-                                stackCard.forceActiveFocus()
-                            }
-
-                            function cancelRename() {
-                                stackWindow.root.isEditingFolderTitle = false
-                                stackCard.forceActiveFocus()
-                            }
-
-                            function replaceSelection(replacement) {
-                                var start = selectionStart
-                                var end = selectionEnd
-                                var room = maximumLength - (text.length - (end - start))
-                                var bounded = replacement.slice(0, Math.max(0, room))
-                                var last = bounded.charCodeAt(bounded.length - 1)
-                                if (last >= 0xd800 && last <= 0xdbff) bounded = bounded.slice(0, -1)
-                                text = text.slice(0, start) + bounded + text.slice(end)
-                                cursorPosition = start + bounded.length
-                            }
-
-                            function handleKey(event) {
-                                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                    event.accepted = true
-                                    saveAndClose()
-                                    return true
-                                }
-                                if (event.key === Qt.Key_Escape) {
-                                    event.accepted = true
-                                    cancelRename()
-                                    return true
-                                }
-                                var shortcut = event.modifiers & (Qt.ControlModifier | Qt.MetaModifier | Qt.AltModifier)
-                                if (shortcut) {
-                                    if (event.key === Qt.Key_A && (event.modifiers & Qt.ControlModifier)) {
-                                        selectAll()
-                                        event.accepted = true
-                                        return true
-                                    }
-                                    return false
-                                }
-                                if (event.key === Qt.Key_Backspace || event.key === Qt.Key_Delete) {
-                                    if (selectionStart === selectionEnd) {
-                                        var position = cursorPosition
-                                        if (event.key === Qt.Key_Backspace && position > 0) {
-                                            var previous = text.charCodeAt(position - 1)
-                                            var count = previous >= 0xdc00 && previous <= 0xdfff && position > 1 ? 2 : 1
-                                            select(position - count, position)
-                                        } else if (event.key === Qt.Key_Delete && position < text.length) {
-                                            var next = text.charCodeAt(position)
-                                            var count = next >= 0xd800 && next <= 0xdbff && position + 1 < text.length ? 2 : 1
-                                            select(position, position + count)
-                                        }
-                                    }
-                                    replaceSelection("")
-                                    event.accepted = true
-                                    return true
-                                } else if (event.text && !/[\x00-\x1f\x7f]/.test(event.text)) {
-                                    replaceSelection(event.text)
-                                    event.accepted = true
-                                    return true
-                                }
-                                return false
-                            }
-
-                            Keys.onPressed: function(event) { handleKey(event) }
-                            onEditingFinished: saveAndClose()
                         }
+
+                        function saveAndClose() {
+                            var n = text.trim()
+                            if (stackWindow.root.activeStackItem) {
+                                stackWindow.root.setPinned(DockModel.renameStack(stackWindow.root.pinnedIds, stackWindow.root.activeStackItem.id, n))
+                                stackWindow.root.activeStackItem.name = n
+                            }
+                            stackWindow.root.isEditingFolderTitle = false
+                            focus = false
+                            stackCard.forceActiveFocus()
+                        }
+
+                        Keys.onReturnPressed: function(event) { event.accepted = true; saveAndClose() }
+                        Keys.onEnterPressed:  function(event) { event.accepted = true; saveAndClose() }
+                        Keys.onEscapePressed: function(event) {
+                            event.accepted = true
+                            text = (stackWindow.root.activeStackItem && stackWindow.root.activeStackItem.name !== undefined) ? stackWindow.root.activeStackItem.name : ""
+                            stackWindow.root.isEditingFolderTitle = false
+                            focus = false
+                            stackCard.forceActiveFocus()
+                        }
+                        onEditingFinished: saveAndClose()
                     }
 
                     MouseArea {
@@ -507,10 +473,10 @@ PanelWindow {
                                     height: 28
                                     fillMode: Image.PreserveAspectFit
                                     cache: true
-                                    source: (stackWindow.root.iconRevision, stackWindow.root.resolveIcon(modelData))
-                                    sourceSize: Qt.size(Math.ceil(28 * Screen.devicePixelRatio), Math.ceil(28 * Screen.devicePixelRatio))
-                                    asynchronous: true
-                                    mipmap: false
+                                    source: stackWindow.root.resolveIcon(modelData, stackWindow.root.iconRevision)
+                                    sourceSize: Qt.size(Math.max(128, 28 * 4 * Screen.devicePixelRatio), Math.max(128, 28 * 4 * Screen.devicePixelRatio))
+                                    asynchronous: false
+                                    mipmap: true
                                     smooth: true
                                     antialiasing: true
                                 }
@@ -591,7 +557,7 @@ PanelWindow {
                                     width: (modelData && modelData.isActive && !modelData.isMinimized) ? 10 : 4
                                     height: 2
                                     radius: 1
-                                    color: (modelData && modelData.isActive && !modelData.isMinimized) ? Color.accent : Color.composed("popups.text", "popups.text-alpha", Color.text, 0.6)
+                                    color: (modelData && modelData.isActive && !modelData.isMinimized) ? Color.accent : Color.composed("popups.text", "popups.text-alpha", Color.foreground, 0.6)
                                     antialiasing: true
                                     smooth: true
 
@@ -631,7 +597,7 @@ PanelWindow {
                                     text: "-"
                                     fontFamily: Style.font.family
                                     fontSize: 16
-                                    color: subExtractMouse.containsMouse ? Color.accent : Color.composed("popups.text", "popups.text-alpha", Color.text, 0.85)
+                                    color: subExtractMouse.containsMouse ? Color.accent : Color.composed("popups.text", "popups.text-alpha", Color.foreground, 0.85)
 
                                     scale: subExtractMouse.containsMouse ? 1.25 : 1.0
                                     Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }

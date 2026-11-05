@@ -12,22 +12,70 @@
 // 1. Pinned items & Folder/Stack management (DockPinned.js)
 // =========================================================================
 var DEFAULT_PINNED = Pinned.DEFAULT_PINNED;
-var stripDesktop = Pinned.stripDesktop;
-var hyprAddressFor = Matcher.hyprAddressFor;
-var toArray = Pinned.toArray;
-var parsePinned = Pinned.parsePinned;
-var serializePinned = Pinned.serializePinned;
-var togglePinned = Pinned.togglePinned;
-var dissolveStack = Pinned.dissolveStack;
-var setStackIcon = Pinned.setStackIcon;
-var createStackFromTwo = Pinned.createStackFromTwo;
-var addToStack = Pinned.addToStack;
-var removeFromStack = Pinned.removeFromStack;
-var renameStack = Pinned.renameStack;
-var reorderInStack = Pinned.reorderInStack;
-var extractFromStackToDock = Pinned.extractFromStackToDock;
-var mergeIntoStack = Pinned.mergeIntoStack;
-var reorderPinned = Pinned.reorderPinned;
+
+function stripDesktop(id) {
+    return Pinned.stripDesktop(id);
+}
+
+function hyprAddressFor(toplevel, hyprToplevels) {
+    return Matcher.hyprAddressFor(toplevel, hyprToplevels);
+}
+
+function toArray(list) {
+    return Pinned.toArray(list);
+}
+
+function parsePinned(raw) {
+    return Pinned.parsePinned(raw);
+}
+
+function serializePinned(pinnedList) {
+    return Pinned.serializePinned(pinnedList);
+}
+
+function togglePinned(pinnedList, appId, maxItems) {
+    return Pinned.togglePinned(pinnedList, appId, maxItems);
+}
+
+function dissolveStack(pinnedList, stackId) {
+    return Pinned.dissolveStack(pinnedList, stackId);
+}
+
+function setStackIcon(pinnedList, stackId, iconSymbol) {
+    return Pinned.setStackIcon(pinnedList, stackId, iconSymbol);
+}
+
+function createStackFromTwo(pinnedList, targetAppId, sourceAppId, allEntries) {
+    return Pinned.createStackFromTwo(pinnedList, targetAppId, sourceAppId, allEntries);
+}
+
+function addToStack(pinnedList, stackId, sourceAppId) {
+    return Pinned.addToStack(pinnedList, stackId, sourceAppId);
+}
+
+function removeFromStack(pinnedList, stackId, appId) {
+    return Pinned.removeFromStack(pinnedList, stackId, appId);
+}
+
+function renameStack(pinnedList, stackId, newName) {
+    return Pinned.renameStack(pinnedList, stackId, newName);
+}
+
+function reorderInStack(pinnedList, stackId, fromIndex, toIndex) {
+    return Pinned.reorderInStack(pinnedList, stackId, fromIndex, toIndex);
+}
+
+function extractFromStackToDock(pinnedList, stackId, appId, targetDockIndex) {
+    return Pinned.extractFromStackToDock(pinnedList, stackId, appId, targetDockIndex);
+}
+
+function mergeIntoStack(pinnedList, dockItems, fromIndex, targetIndex, allEntries) {
+    return Pinned.mergeIntoStack(pinnedList, dockItems, fromIndex, targetIndex, allEntries);
+}
+
+function reorderPinned(pinnedList, dockItems, fromIndex, toIndex) {
+    return Pinned.reorderPinned(pinnedList, dockItems, fromIndex, toIndex);
+}
 
 // =========================================================================
 // 2. Semantic Folder Auto-Naming (DockAutoName.js)
@@ -35,46 +83,119 @@ var reorderPinned = Pinned.reorderPinned;
 var SEMANTIC_CATEGORY_MAP = AutoName.SEMANTIC_CATEGORY_MAP;
 var SEMANTIC_KEYWORD_MAP = AutoName.SEMANTIC_KEYWORD_MAP;
 var BRAND_ECOSYSTEM_MAP = AutoName.BRAND_ECOSYSTEM_MAP;
-var normalizeAppKey = AutoName.normalizeAppKey;
-var getAppMetadata = AutoName.getAppMetadata;
-var hasTokenMatch = AutoName.hasTokenMatch;
-var inferFolderName = AutoName.inferFolderName;
+
+function normalizeAppKey(id) {
+    return AutoName.normalizeAppKey(id);
+}
+
+function getAppMetadata(appId, allEntries) {
+    return AutoName.getAppMetadata(appId, allEntries);
+}
+
+function hasTokenMatch(meta, keyword) {
+    return AutoName.hasTokenMatch(meta, keyword);
+}
+
+function inferFolderName(appId1, appId2, allEntries) {
+    return AutoName.inferFolderName(appId1, appId2, allEntries);
+}
 
 // =========================================================================
 // 3. Window Matching, Icon Resolution & Dock Item Builder (DockMatcher.js)
 // =========================================================================
 var KNOWN_APP_DEFAULTS = Matcher.KNOWN_APP_DEFAULTS;
 var FALLBACK_ICON_CANDIDATES = Matcher.FALLBACK_ICON_CANDIDATES;
-var getCandidates = Matcher.getCandidates;
-var normalizeKey = Matcher.normalizeKey;
-var extractChromeDomain = Matcher.extractChromeDomain;
-var unwrapEntry = Matcher.unwrapEntry;
-var findEntry = Matcher.findEntry;
-var resolveIcon = Matcher.resolveIcon;
-var isBrowserApp = Matcher.isBrowserApp;
-var matchToplevel = Matcher.matchToplevel;
-var toCanonical = Matcher.toCanonical;
-var getBadgeInfo = Matcher.getBadgeInfo;
-var buildDockItems = Matcher.buildDockItems;
-var setPendingCliHint = Matcher.setPendingCliHint;
-var setDetectedCliApps = Matcher.setDetectedCliApps;
-var setDefaultAgent = Matcher.setDefaultAgent;
-var setDiskIcons = Matcher.setDiskIcons;
-var getDiskIcon = Matcher.getDiskIcon;
+
+function getCandidates(rawIcon, icon, appId) {
+    return Matcher.getCandidates(rawIcon, icon, appId);
+}
+
+function normalizeKey(str) {
+    return Matcher.normalizeKey(str);
+}
+
+function extractChromeDomain(appClass) {
+    return Matcher.extractChromeDomain(appClass);
+}
+
+function unwrapEntry(e) {
+    return Matcher.unwrapEntry(e);
+}
+
+function findEntry(desktopEntries, appId) {
+    return Matcher.findEntry(desktopEntries, appId);
+}
+
+function resolveIcon(entry, appId, appLibrary) {
+    return Matcher.resolveIcon(entry, appId, appLibrary);
+}
+
+function isBrowserApp(id) {
+    return Matcher.isBrowserApp(id);
+}
+
+function matchToplevel(toplevel, appId, entry, desktopEntries, cachedCliApp) {
+    return Matcher.matchToplevel(toplevel, appId, entry, desktopEntries, cachedCliApp);
+}
+
+function toCanonical(str) {
+    return Matcher.toCanonical(str);
+}
+
+function getBadgeInfo(badgeCounts, urgentCounts, appId, entry, name, desktopId) {
+    return Matcher.getBadgeInfo(badgeCounts, urgentCounts, appId, entry, name, desktopId);
+}
+
+function buildDockItems(pinnedList, toplevelsList, activeToplevel, desktopEntries, appLibrary, badgeCounts, urgentCounts, maxItems, minimizedToplevels) {
+    return Matcher.buildDockItems(pinnedList, toplevelsList, activeToplevel, desktopEntries, appLibrary, badgeCounts, urgentCounts, maxItems, minimizedToplevels);
+}
+
+function setPendingCliHint(appId, knownWindowsList) {
+    return Matcher.setPendingCliHint(appId, knownWindowsList);
+}
+
+function setDetectedCliApps(apps) {
+    return Matcher.setDetectedCliApps(apps);
+}
 
 // =========================================================================
 // 4. Dock Widget Management (DockWidgets.js)
 // =========================================================================
-var switchDockWidgetInBar = Widgets.switchDockWidgetInBar;
-var removeWidgetFromBar = Widgets.removeWidgetFromBar;
-var returnWidgetToBar = Widgets.returnWidgetToBar;
-var addWidgetToDockList = Widgets.addWidgetToDockList;
-var removeWidgetFromDockList = Widgets.removeWidgetFromDockList;
-var getDockWidgetLayout = Widgets.getDockWidgetLayout;
+function switchDockWidgetInBar(shell, newWidgetId, prevWidgetIds, savedPositions, shellConfigFile) {
+    return Widgets.switchDockWidgetInBar(shell, newWidgetId, prevWidgetIds, savedPositions, shellConfigFile);
+}
+
+function removeWidgetFromBar(shell, widgetId, savedPositions, shellConfigFile) {
+    return Widgets.removeWidgetFromBar(shell, widgetId, savedPositions, shellConfigFile);
+}
+
+function returnWidgetToBar(shell, widgetId, savedPositions, defaultRegion, shellConfigFile) {
+    return Widgets.returnWidgetToBar(shell, widgetId, savedPositions, defaultRegion, shellConfigFile);
+}
+
+function addWidgetToDockList(dockWidgetsList, widgetId) {
+    return Widgets.addWidgetToDockList(dockWidgetsList, widgetId);
+}
+
+function removeWidgetFromDockList(dockWidgetsList, widgetId) {
+    return Widgets.removeWidgetFromDockList(dockWidgetsList, widgetId);
+}
+
+function getDockWidgetLayout(showAppMenu, appMenuPosition, widgetsEnabled, dockWidgetsList, widgetPosition) {
+    return Widgets.getDockWidgetLayout(showAppMenu, appMenuPosition, widgetsEnabled, dockWidgetsList, widgetPosition);
+}
 
 // =========================================================================
 // 5. Application Launcher (DockLauncher.js)
 // =========================================================================
-var escapeShellArg = Launcher.escapeShellArg;
-var parseDesktopExec = Launcher.parseDesktopExec;
-var launchApp = Launcher.launchApp;
+function escapeShellArg(arg) {
+    return Launcher.escapeShellArg(arg);
+}
+
+function parseDesktopExec(execStr) {
+    return Launcher.parseDesktopExec(execStr);
+}
+
+function launchApp(shell, itemData, util) {
+    return Launcher.launchApp(shell, itemData, util);
+}

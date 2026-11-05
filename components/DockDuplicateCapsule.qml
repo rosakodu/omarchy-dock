@@ -51,7 +51,7 @@ Rectangle {
                 width: isOriginalApp ? 9.0 : (isSlotHighlighted ? 3.5 : 2.5)
                 height: 2.5
                 radius: 1.25
-                color: isSlotHighlighted ? Color.accent : Color.composed("popups.text", "popups.text-alpha", Color.text, isOriginalApp ? 0.45 : 0.28)
+                color: isSlotHighlighted ? Color.accent : Color.composed("popups.text", "popups.text-alpha", Color.foreground, isOriginalApp ? 0.45 : 0.28)
                 antialiasing: true
                 smooth: true
 

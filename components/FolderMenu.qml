@@ -88,6 +88,8 @@ PanelWindow {
         z: 1
         anchors.centerIn: parent
         focus: true
+        LayoutMirroring.enabled: I18n.rightToLeft
+        LayoutMirroring.childrenInherit: true
 
         property int selectedIndex: -1
         property bool isWheelOrKeyNav: false

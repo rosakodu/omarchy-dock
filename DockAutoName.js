@@ -64,7 +64,7 @@ function getAppMetadata(appId, allEntries) {
             var e = allEntries[i];
             if (!e) continue;
             var entryId = normalizeAppKey(e.id || e.desktopId || "");
-            var entryExec = normalizeAppKey(e.execString || e.exec || "");
+            var entryExec = normalizeAppKey(e.exec || "");
             var entryName = normalizeAppKey(e.name || "");
             var entryClass = normalizeAppKey(e.appClass || "");
 
@@ -224,4 +224,33 @@ function inferFolderName(appId1, appId2, allEntries) {
 
     // 7. Default Fallback
     return "Folder";
+}
+
+var CATEGORY_I18N_MAP = {
+    "Browsers": "folder.browsers",
+    "Messaging": "folder.messaging",
+    "Communication": "folder.communication",
+    "Development": "folder.dev",
+    "Terminals": "folder.terminals",
+    "Editors": "folder.editors",
+    "Graphics": "folder.graphics",
+    "Media": "folder.media",
+    "Productivity": "folder.productivity",
+    "Games": "folder.games",
+    "Files": "folder.files",
+    "System": "folder.system",
+    "Utilities": "folder.utilities",
+    "Email": "folder.email",
+    "Photos": "folder.photos",
+    "Notes & Docs": "folder.notes",
+    "AI Tools": "folder.ai",
+    "Maps": "folder.maps",
+    "Folder": "folder.default"
+};
+
+function getCategoryI18nKey(category) {
+    if (category && CATEGORY_I18N_MAP[category]) {
+        return CATEGORY_I18N_MAP[category];
+    }
+    return "";
 }
