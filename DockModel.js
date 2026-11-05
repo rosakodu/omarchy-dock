@@ -158,6 +158,18 @@ function setDetectedCliApps(apps) {
     return Matcher.setDetectedCliApps(apps);
 }
 
+function setDefaultAgent(agent) {
+    return Matcher.setDefaultAgent(agent);
+}
+
+function setDiskIcons(icons) {
+    return Matcher.setDiskIcons(icons);
+}
+
+function getDiskIcon(name) {
+    return Matcher.getDiskIcon(name);
+}
+
 // =========================================================================
 // 4. Dock Widget Management (DockWidgets.js)
 // =========================================================================

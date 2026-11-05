@@ -198,9 +198,9 @@ Item {
                 if (isAllowedIconPath(c)) return "file://" + c
                 continue
             }
-            var diskHit = DockModel.getDiskIcon(c)
+            var diskHit = (typeof DockModel.getDiskIcon === "function") ? DockModel.getDiskIcon(c) : null
             if (diskHit) return diskHit
-            var diskHitLow = DockModel.getDiskIcon(c.toLowerCase())
+            var diskHitLow = (typeof DockModel.getDiskIcon === "function") ? DockModel.getDiskIcon(c.toLowerCase()) : null
             if (diskHitLow) return diskHitLow
             if (shell && shell.appLibrary && typeof shell.appLibrary.iconSource === "function") {
                 var src = shell.appLibrary.iconSource(c)
@@ -355,9 +355,9 @@ Item {
             source: {
                 if (root.itemData) {
                     var raw = root.itemData.rawIcon || root.itemData.icon || root.itemData.appId || root.itemData.id || ""
-                    var dIcon = DockModel.getDiskIcon(raw)
+                    var dIcon = (typeof DockModel.getDiskIcon === "function") ? DockModel.getDiskIcon(raw) : null
                     if (dIcon) return dIcon
-                    var dIconLow = DockModel.getDiskIcon(String(raw).toLowerCase())
+                    var dIconLow = (typeof DockModel.getDiskIcon === "function") ? DockModel.getDiskIcon(String(raw).toLowerCase()) : null
                     if (dIconLow) return dIconLow
                 }
                 return "file:///usr/share/pixmaps/omarchy.png"

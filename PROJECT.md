@@ -33,7 +33,7 @@
 | 1 | M1_AuditFixes | Fix Color.text, DockModel.js exports, FolderPopup comma expr, clean qmllint warnings, pass existing 100 tests | none | DONE |
 | 2 | M2_TrayStyleSync | Implement reactive 3-state tray background detection (opaque, glassy, none) and styling in DockPanel.qml | M1_AuditFixes | DONE |
 | 3 | M3_Localization | Create i18n catalogs for 50 languages, integrate Commons.Translations, bind UI strings and auto-naming, import Omarchy pins fallback | M1_AuditFixes | DONE |
-| 4 | M4_FinalValidation | Verify 100% E2E test pass, adversarial test hardening, visual and runtime checks | M1_AuditFixes, M2_TrayStyleSync, M3_Localization, E2E_Testing | IN_PROGRESS |
+| 4 | M4_FinalValidation | Verify 100% E2E test pass, adversarial test hardening, visual and runtime checks (runtime icons & glassy solid border fixed) | M1_AuditFixes, M2_TrayStyleSync, M3_Localization, E2E_Testing | DONE |
 
 ## Interface Contracts
 ### M1 ↔ M2 / M3

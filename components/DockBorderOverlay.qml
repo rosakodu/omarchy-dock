@@ -37,7 +37,7 @@ Item {
     visible: hasBorder && width > 0 && height > 0
     anchors.fill: parent
     enabled: false
-    z: 100000
+    z: 0
 
     Shape {
         anchors.fill: parent
