@@ -2805,7 +2805,7 @@ Item {
             }
             border.width: {
                 if (root.barStyleState === "none") return 0
-                if (root.barStyleState === "glassy") return Border.isNone(root.dockBorderSpec) ? 0 : Math.max(1, Border.uniformWidth(root.dockBorderSpec))
+                if (root.barStyleState === "glassy") return 0 // Math.max(1, Border.uniformWidth(root.dockBorderSpec)) handled by child Rectangle
                 if (!Border.canUseNative(root.dockBorderSpec)) return 0
                 return Border.uniformWidth(root.dockBorderSpec)
             }
@@ -2829,6 +2829,19 @@ Item {
                     animated: root.borderAngleAnimationEnabled
                     animationDuration: root.borderAngleAnimationDuration
                 }
+            }
+
+            Rectangle {
+                id: glassySolidBorderFrame
+                anchors.fill: parent
+                radius: root.systemRounding
+                color: "transparent"
+                enabled: false
+                visible: root.barStyleState === "glassy"
+                border.width: Border.isNone(root.dockBorderSpec) ? 0 : Math.max(1, Border.uniformWidth(root.dockBorderSpec))
+                border.color: Border.isNone(root.dockBorderSpec) ? "transparent" : Border.color(root.dockBorderSpec)
+                antialiasing: true
+                smooth: true
             }
 
             Behavior on color { ColorAnimation { duration: 250; easing.type: Easing.OutCubic } }
