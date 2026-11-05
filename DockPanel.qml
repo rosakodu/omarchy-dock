@@ -2831,6 +2831,17 @@ Item {
                 }
             }
 
+            Rectangle {
+                id: glassySolidBorderFrame
+                anchors.fill: parent
+                radius: root.systemRounding
+                color: "transparent"
+                visible: root.barStyleState === "glassy" && !Border.isNone(root.dockBorderSpec)
+                border.width: Math.max(1, Border.uniformWidth(root.dockBorderSpec))
+                border.color: Border.color(root.dockBorderSpec)
+                z: 1000
+            }
+
             Behavior on color { ColorAnimation { duration: 250; easing.type: Easing.OutCubic } }
             Behavior on border.color { ColorAnimation { duration: 250; easing.type: Easing.OutCubic } }
             Behavior on border.width { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
