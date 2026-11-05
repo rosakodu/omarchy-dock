@@ -2669,12 +2669,7 @@ Item {
                 // root.shouldSlideOut is false).
                 readonly property bool slidOut: root.screenSlidesOut(modelData)
                 screen: modelData
-                visible: root.dockMapped && root.screenShowsDock(modelData) && !remapGuard.remapping
-
-                ScreenMoveRemap {
-                    id: remapGuard
-                    window: dockLayer
-                }
+                visible: root.dockMapped && root.screenShowsDock(modelData)
 
                 WlrLayershell.namespace: "omarchy-dock"
                 // Fullscreen windows stack above the Top layer, which would
