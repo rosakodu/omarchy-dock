@@ -20,6 +20,7 @@ Item {
     property real fontScale: (typeof Style !== "undefined" && typeof Style.fontScale === "number" && Style.fontScale > 0) ? Style.fontScale : 1.0
     property real slotSize: Math.round(42 * fontScale)
     property real iconBaseSize: Math.round(24 * fontScale)
+    property real hoverScale: 1.10
     property int systemBorderSize: Style.normalBorderWidth > 0 ? Style.normalBorderWidth : 2
     property int systemRounding: Style.cornerRadius >= 0 ? Style.cornerRadius : 12
     property bool isSelected: false
@@ -318,7 +319,7 @@ Item {
         height: root.iconBaseSize
         z: 1
 
-        scale: (root.isDragging ? 1.15 : (root.isEditMode ? 0.82 : (root.isMergeTarget ? 0.94 : (root.isPressVisualActive ? 0.92 : (mouseArea.containsMouse ? 1.10 : 1.0))))) * root.clickScaleFactor
+        scale: (root.isDragging ? 1.15 : (root.isEditMode ? 0.82 : (root.isMergeTarget ? 0.94 : (root.isPressVisualActive ? 0.92 : (mouseArea.containsMouse ? root.hoverScale : 1.0))))) * root.clickScaleFactor
         opacity: root.iconsReady ? (root.isDragging ? 0.92 : 1.0) : 0.0
 
         Behavior on scale {
