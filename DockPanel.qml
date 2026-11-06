@@ -165,8 +165,13 @@ Item {
 
     function toggleApps() {
         if (appGridLoader && appGridLoader.item) {
-            if (!appGridLoader.item.appLibrary && root.shell && root.shell.appLibrary) {
-                appGridLoader.item.appLibrary = root.shell.appLibrary
+            var lib = (root.shell && root.shell.appLibrary) ? root.shell.appLibrary : null
+            if (lib) {
+                appGridLoader.item.appLibrary = lib
+                if (typeof lib.refreshIcons === "function") lib.refreshIcons()
+            }
+            if (typeof appGridLoader.item.rebuild === "function") {
+                appGridLoader.item.rebuild()
             }
             appGridLoader.item.toggle()
         }
@@ -3447,7 +3452,7 @@ Item {
         active: true
         onLoaded: {
             if (item) {
-                item.appLibrary = (root.shell && root.shell.appLibrary) ? root.shell.appLibrary : null
+                item.appLibrary = Qt.binding(function() { return (root.shell && root.shell.appLibrary) ? root.shell.appLibrary : null })
                 item.dock = null
             }
         }
