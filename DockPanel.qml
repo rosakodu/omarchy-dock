@@ -2736,12 +2736,8 @@ Item {
                 property alias surface: dockSurface
                 property alias hoverHandler: dockHoverHandler
                 screen: modelData
-                visible: root.dockMapped && root.screenShowsDock(modelData) && !remapGuard.remapping
+                visible: root.dockMapped && root.screenShowsDock(modelData)
 
-                ScreenMoveRemap {
-                    id: remapGuard
-                    window: dockLayer
-                }
 
                 Binding { target: dockLayer.contentItem; property: "LayoutMirroring.enabled"; value: I18n.rightToLeft }
                 Binding { target: dockLayer.contentItem; property: "LayoutMirroring.childrenInherit"; value: true }
