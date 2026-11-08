@@ -158,8 +158,8 @@ function setDetectedCliApps(apps) {
     return Matcher.setDetectedCliApps(apps);
 }
 
-function setDefaultAgent(agent) {
-    return Matcher.setDefaultAgent(agent);
+function setDefaultAgent(id, assetUrl) {
+    return Matcher.setDefaultAgent(id, assetUrl);
 }
 
 function setDiskIcons(icons) {
