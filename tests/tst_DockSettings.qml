@@ -13,6 +13,38 @@ TestCase {
         compare(settings.suppressSystemDock, true)
         compare(DockSettings.normalize({ suppressSystemDock: false }).suppressSystemDock, false)
         compare(DockSettings.normalize({ suppressSystemDock: "false" }).suppressSystemDock, false)
+        compare(settings.iconScale, 1.0)
+        compare(settings.surface, "auto")
+        compare(settings.hoverMagnify, false)
+    }
+
+    function test_iconScale_data() {
+        return [
+            { tag: "custom", value: 1.3, expected: 1.3 },
+            { tag: "string", value: "1.3", expected: 1.3 },
+            { tag: "tooSmall", value: 0.2, expected: 0.75 },
+            { tag: "tooLarge", value: 5, expected: 2.0 },
+            { tag: "invalid", value: "big", expected: 1.0 },
+            { tag: "null", value: null, expected: 1.0 }
+        ]
+    }
+
+    function test_iconScale(data) {
+        compare(DockSettings.normalize({ iconScale: data.value }).iconScale, data.expected)
+    }
+
+    function test_surfaceFallsBackToAuto() {
+        compare(DockSettings.normalize({ surface: "popup" }).surface, "popup")
+        compare(DockSettings.normalize({ surface: " Popup " }).surface, "popup")
+        compare(DockSettings.normalize({ surface: "glass" }).surface, "auto")
+    }
+
+    function test_hoverMagnify() {
+        compare(DockSettings.normalize({ hoverMagnify: true }).hoverMagnify, true)
+        compare(DockSettings.normalize({ hoverMagnify: "true" }).hoverMagnify, true)
+        compare(DockSettings.normalize({ hoverMagnify: 1 }).hoverMagnify, false)
+        compare(DockSettings.hoverScale(false), 1.10)
+        compare(DockSettings.hoverScale(true), 1.5)
     }
 
     function test_legacyAutohideMigration_data() {
