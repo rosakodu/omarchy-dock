@@ -263,4 +263,14 @@ TestCase {
         var lRes = DockModel.launchApp(null, null, null);
         verify(lRes === undefined || lRes === false);
     }
+
+    function test_setDefaultAgentPassesAsset() {
+        // DockPanel sets the agent through the DockModel facade; the asset URL must reach the matcher
+        var asset = "file:///usr/share/omarchy/shell/plugins/agents/assets/claude.svg"
+        DockModel.setDefaultAgent("claude", asset)
+        var cands = DockModel.getCandidates("", "", "org.omarchy.agent")
+        verify(cands.indexOf("claude") !== -1)
+        verify(cands.indexOf(asset) !== -1)
+        DockModel.setDefaultAgent("", "")
+    }
 }
