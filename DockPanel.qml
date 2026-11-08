@@ -166,6 +166,10 @@ Item {
     function toggleApps() {
         if (appGridLoader && appGridLoader.item) {
             var lib = (root.shell && root.shell.appLibrary) ? root.shell.appLibrary : null
+            if (!lib) {
+                ownAppLibrary.active = true
+                lib = ownAppLibrary.item
+            }
             if (lib) {
                 appGridLoader.item.appLibrary = lib
                 if (typeof lib.refreshIcons === "function") lib.refreshIcons()
@@ -3446,6 +3450,14 @@ Item {
 
     // 4. Widget Picker Popup Menu
     
+    // The host only hands a third-party plugin shell.appLibrary when it has the "menu" kind,
+    // so the grid gets its own copy of Omarchy's AppLibrary (same interface), created on first use.
+    Loader {
+        id: ownAppLibrary
+        active: false
+        source: "file:///usr/share/omarchy/shell/services/AppLibrary.qml"
+    }
+
     Loader {
         id: appGridLoader
         source: "file:///usr/share/omarchy/shell/plugins/dock/AppGrid.qml"
