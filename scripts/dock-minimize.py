@@ -224,7 +224,7 @@ def close_any_special(sock_path):
             sw_name = str(sw.get("name", ""))
             if sw_name and sw_name != "":
                 clean_name = sw_name.replace("special:", "")
-                hypr_cmd(sock_path, f'dispatch hl.dsp.workspace.toggle_special({{ workspace = "{clean_name}" }})')
+                hypr_cmd(sock_path, f'dispatch hl.dsp.workspace.toggle_special("{clean_name}")')
     except Exception:
         pass
 
@@ -644,6 +644,7 @@ def main():
             matching.insert(0, target_client)
 
     focused_ws = "1"
+    focused_special = ""
     try:
         monitors_raw = hypr_cmd(sock_path, "j/monitors")
         monitors = json.loads(monitors_raw)
@@ -651,6 +652,7 @@ def main():
             if m.get("focused"):
                 ws = m.get("activeWorkspace", {})
                 focused_ws = str(ws.get("name") or ws.get("id") or "1")
+                focused_special = str(m.get("specialWorkspace", {}).get("name", ""))
                 break
     except Exception:
         pass
@@ -660,7 +662,8 @@ def main():
 
     for c in matching:
         ws_name = str(c.get("workspace", {}).get("name", ""))
-        if ws_name.startswith("special:"):
+        # Only the dock's own workspace means minimized; scratchpads stay what they are.
+        if ws_name == "special:minimized":
             minimized_windows.append(c)
         else:
             visible_windows.append(c)
@@ -684,7 +687,7 @@ def main():
             return
 
         addr = target_c["address"]
-        is_min = str(target_c.get("workspace", {}).get("name", "")).startswith("special:")
+        is_min = str(target_c.get("workspace", {}).get("name", "")) == "special:minimized"
 
         if is_min:
             # Rule §4.1: Repeat right-click on minimized app is strictly ignored
@@ -749,7 +752,7 @@ def main():
             return
 
         addr = target_c["address"]
-        is_min = str(target_c.get("workspace", {}).get("name", "")).startswith("special:")
+        is_min = str(target_c.get("workspace", {}).get("name", "")) == "special:minimized"
 
         if is_min:
             target_ws = focused_ws or "1"
@@ -769,6 +772,22 @@ def main():
             raise_window(sock_path, target_c)
             close_any_special(sock_path)
         else:
+            target_ws = str(target_c.get("workspace", {}).get("name", ""))
+            if target_ws.startswith("special:"):
+                # Scratchpad window: show its special workspace instead of pulling the window out.
+                clean_name = target_ws.replace("special:", "")
+                toggle = f'dispatch hl.dsp.workspace.toggle_special("{clean_name}")'
+                if focused_special == target_ws:
+                    active_raw = hypr_cmd(sock_path, "j/activewindow")
+                    try:
+                        active_addr = str(json.loads(active_raw).get("address", "")).lower() if active_raw else ""
+                    except Exception:
+                        active_addr = ""
+                    if active_addr == str(addr).lower():
+                        hypr_cmd(sock_path, toggle)
+                        return
+                else:
+                    hypr_cmd(sock_path, toggle)
             cmd_focus = f'dispatch hl.dsp.focus({{ window = "address:{addr}" }})'
             res_focus = hypr_cmd(sock_path, cmd_focus)
             if "error" in res_focus.lower():
