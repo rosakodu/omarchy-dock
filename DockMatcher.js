@@ -1970,7 +1970,7 @@ function buildDockItems(pinnedList, toplevelsList, activeToplevel, desktopEntrie
         var rIcon = resolveIcon(rEntry, rAppId, appLibrary);
         var rName = (rEntry && rEntry.name) ? rEntry.name : (rTitle || rAppId || "App");
         var rIconSource = (rEntry && rEntry.iconSource) ? rEntry.iconSource : "";
-        var rDesktopId = (rEntry && rEntry.id) ? rEntry.id : (rAppId || "");
+        var rDesktopId = (rEntry && rEntry.id) ? rEntry.id : "";
         var rExec = rEntry ? getEntryExec(rEntry) : "";
 
         // Find all unassigned toplevels for this unpinned app

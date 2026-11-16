@@ -1829,9 +1829,11 @@ Item {
     function restoreOrLaunchItem(itemData, targetIndex) {
         if (!itemData) return
         var args = ["activate-instance"]
-        if (itemData.appId) args.push(itemData.appId)
-        if (itemData.desktopId && itemData.desktopId !== itemData.appId) args.push(itemData.desktopId)
-        if (itemData.exec) args.push(itemData.exec)
+        if (itemData.desktopId) {
+            args.push(itemData.desktopId)
+        } else if (itemData.appId && typeof itemData.appId === "string" && !itemData.appId.includes("/") && !itemData.appId.includes(" ")) {
+            args.push(itemData.appId)
+        }
         var targetArg = root.targetWindowArg(itemData, targetIndex)
         if (targetArg) {
             args.push(targetArg)

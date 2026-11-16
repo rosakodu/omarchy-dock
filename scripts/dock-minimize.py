@@ -396,7 +396,7 @@ def launch_fallback(queries):
             except Exception:
                 pass
 
-    # 1. First priority: desktop entry files that actually exist on disk via gtk-launch
+    # 1. Desktop entry files that actually exist on disk via gtk-launch / uwsm-app
     for q in queries:
         if not q or q.startswith("0x") or q.startswith("--"):
             continue
@@ -412,21 +412,9 @@ def launch_fallback(queries):
                 except Exception:
                     pass
 
-    # 2. Second priority: executable argv lists without shell=True
-    for q in queries:
-        if not q or q.startswith("0x") or q.startswith("--"):
-            continue
-        argv = parse_desktop_exec_argv(q)
-        if argv and shutil.which(argv[0]):
-            try:
-                subprocess.Popen(["uwsm-app", "--"] + argv, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                return
-            except Exception:
-                try:
-                    subprocess.Popen(argv, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    return
-                except Exception:
-                    pass
+    # Strictly disallow executing arbitrary client-provided app IDs or unverified commands.
+    # Launch is only permitted for verified desktop entries or explicit whitelist above.
+
 
 def scan_disk_icons():
     """Scan system and user icon directories for app icons.
