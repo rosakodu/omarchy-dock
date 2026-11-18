@@ -68,8 +68,8 @@ class DockPanelSourceInspectionTest(unittest.TestCase):
         self.assertIn("Border.color(root.dockBorderSpec)", color_block)
 
     def test_dock_border_overlay_active_only_on_opaque(self):
-        """Verify gradient overlay Loader is active only in opaque mode."""
-        self.assertIn('active: root.barStyleState === "opaque" && Border.needsOverlay(root.dockBorderSpec)', self.content)
+        """Verify gradient overlay Loader is active only in opaque mode (or with the popup surface)."""
+        self.assertIn('active: (root.usePopupSurface || root.barStyleState === "opaque") && Border.needsOverlay(root.dockBorderSpec)', self.content)
 
 
 class BarStyleStateAdversarialSimulationTest(unittest.TestCase):

@@ -88,6 +88,25 @@ monitor containing the focused window and keeps that target until the dock is
 closed. With an explicit selector, the dock always targets that workspace and
 can open only while the workspace is active on a monitor.
 
+### Size and look
+
+These keys are optional and only live in `dock-settings.json`:
+
+```json
+{
+  "iconScale": 1.3,
+  "surface": "popup",
+  "hoverMagnify": true
+}
+```
+
+`iconScale` (default `1.0`, range `0.75`–`2.0`) scales the whole dock, slots and icons,
+on top of the shell's font scale. `surface` accepts `auto` (default: follows the bar,
+translucent and borderless over a transparent bar) or `popup`, which always uses the
+background and border of Omarchy's popups so the dock matches other shell surfaces.
+`hoverMagnify` (default `false`) enlarges the icon under the pointer to 1.5× instead of
+the subtle default 1.1×; the magnified icon still fits its slot.
+
 ### Keyboard toggle
 
 Keyboard shortcuts belong to Hyprland, so the plugin never edits your Omarchy
