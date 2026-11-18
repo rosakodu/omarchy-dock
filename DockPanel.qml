@@ -2118,7 +2118,7 @@ Item {
             var wsArr = Hyprland.workspaces.values
             for (var w = 0; w < wsArr.length; w++) {
                 var ws = wsArr[w]
-                if (ws && String(ws.name || "").indexOf("special:") === 0) {
+                if (ws && String(ws.name || "") === "special:minimized") {
                     if (ws.toplevels && ws.toplevels.values) {
                         var tops = ws.toplevels.values
                         for (var wt = 0; wt < tops.length; wt++) {
@@ -2145,7 +2145,7 @@ Item {
                 active = null
             } else if (typeof Hyprland !== "undefined" && Hyprland.activeToplevel && Hyprland.activeToplevel.workspace) {
                 var aWs = String(Hyprland.activeToplevel.workspace.name || "")
-                if (aWs.indexOf("special:") === 0) {
+                if (aWs === "special:minimized") {
                     active = null
                 }
             }
