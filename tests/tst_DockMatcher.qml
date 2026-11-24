@@ -395,6 +395,41 @@ TestCase {
         compare(DockMatcher.extractCliApp("lazyapp - session", idEntries), "lazyapp")
     }
 
+    function test_extractCliApp_ignoresUrlLaunchersAndWindowedApps() {
+        var steamEntry = {
+            id: "steam_app_480.desktop",
+            name: "Spacewar",
+            exec: "steam steam://rungameid/480",
+            icon: "steam_icon_480"
+        }
+        var windowedAppEntry = {
+            id: "gimp.desktop",
+            name: "GNU Image Manipulation Program",
+            exec: "gimp-2.10 %U",
+            icon: "gimp",
+            runInTerminal: false
+        }
+        var cliEntry = {
+            id: "btop.desktop",
+            name: "btop++",
+            exec: "btop",
+            icon: "btop",
+            runInTerminal: true
+        }
+
+        var entries = [steamEntry, windowedAppEntry, cliEntry]
+
+        // Terminal with title containing "steam" should NOT be claimed as steam_app_480
+        compare(DockMatcher.extractCliApp("steam", entries), "")
+        compare(DockMatcher.extractCliApp("steam - running", entries), "")
+
+        // Terminal with title containing windowed app with runInTerminal: false should NOT be claimed
+        compare(DockMatcher.extractCliApp("gimp-2.10", entries), "")
+
+        // Legitimate CLI app should still be extracted
+        compare(DockMatcher.extractCliApp("btop", entries), "btop")
+    }
+
     function test_getCandidates_caseAndVariants() {
         var cands1 = DockMatcher.getCandidates("SyncTERM", "", "SyncTERM")
         verify(cands1.indexOf("syncterm") !== -1)

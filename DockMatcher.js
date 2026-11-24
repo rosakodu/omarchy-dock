@@ -1001,8 +1001,11 @@ function extractCliApp(title, desktopEntries) {
             for (var d = 0; d < list.length; d++) {
                 var de = unwrapEntry(list[d]);
                 if (!de) continue;
+                if (de.runInTerminal === false) continue;
                 var deId = stripDesktop(de.id || "").toLowerCase();
-                var deExec = getEntryExec(de).toLowerCase().split(/\s+/)[0].split("/").pop();
+                var deExecFull = getEntryExec(de).toLowerCase();
+                if (token !== deId && deExecFull.indexOf("://") !== -1) continue;
+                var deExec = deExecFull.split(/\s+/)[0].split("/").pop();
                 if ((token === deId || token === deExec) && !isTerminalApp(deId, de)) {
                     return deId || token;
                 }

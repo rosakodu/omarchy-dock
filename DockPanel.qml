@@ -165,10 +165,9 @@ Item {
 
     function toggleApps() {
         if (appGridLoader && appGridLoader.item) {
-            var lib = (root.shell && root.shell.appLibrary) ? root.shell.appLibrary : null
-            if (lib) {
-                appGridLoader.item.appLibrary = lib
-                if (typeof lib.refreshIcons === "function") lib.refreshIcons()
+            appGridLoader.item.appLibrary = appGridLibraryShim
+            if (typeof appGridLibraryShim.refreshIcons === "function") {
+                appGridLibraryShim.refreshIcons()
             }
             if (typeof appGridLoader.item.rebuild === "function") {
                 appGridLoader.item.rebuild()
@@ -3477,22 +3476,79 @@ Item {
     // 4. Widget Picker Popup Menu
     
     Loader {
+        id: fallbackAppLibraryLoader
+        source: "file:///usr/share/omarchy/shell/services/AppLibrary.qml"
+        active: !(root.shell && root.shell.appLibrary)
+        onLoaded: {
+            if (item) {
+                if (appGridLoader && appGridLoader.item && appGridLoader.item.appLibrary === null) {
+                    appGridLoader.item.appLibrary = appGridLibraryShim
+                }
+                appGridLibraryShim.appsChanged()
+            }
+        }
+    }
+
+    QtObject {
+        id: appGridLibraryShim
+
+        readonly property var base: (root.shell && root.shell.appLibrary) ? root.shell.appLibrary : (fallbackAppLibraryLoader ? fallbackAppLibraryLoader.item : null)
+
+        signal appsChanged()
+
+        function entryName(entry) {
+            return (base && typeof base.entryName === "function") ? base.entryName(entry) : ""
+        }
+
+        function entrySubtext(entry) {
+            return (base && typeof base.entrySubtext === "function") ? base.entrySubtext(entry) : ""
+        }
+
+        function sortedEntries(query) {
+            return (base && typeof base.sortedEntries === "function") ? base.sortedEntries(query) : []
+        }
+
+        function iconSource(icon) {
+            return (base && typeof base.iconSource === "function") ? base.iconSource(icon) : ""
+        }
+
+        function refreshIcons() {
+            if (base && typeof base.refreshIcons === "function") base.refreshIcons()
+        }
+
+        function refreshVersions() {}
+
+        function version(entry) {
+            return ""
+        }
+
+        function launch(desktopId, name) {
+            if (base && typeof base.launch === "function") base.launch(desktopId, name)
+        }
+
+        function remove(desktopId, name) {
+            if (base && typeof base.remove === "function") base.remove(desktopId, name)
+        }
+    }
+
+    Loader {
         id: appGridLoader
         source: "file:///usr/share/omarchy/shell/plugins/dock/AppGrid.qml"
         active: true
         onLoaded: {
             if (item) {
-                item.appLibrary = Qt.binding(function() { return (root.shell && root.shell.appLibrary) ? root.shell.appLibrary : null })
+                item.appLibrary = appGridLibraryShim
                 item.dock = null
             }
         }
     }
     Connections {
-        target: (root.shell && root.shell.appLibrary) ? root.shell.appLibrary : null
+        target: appGridLibraryShim.base
         function onAppsChanged() {
             if (appGridLoader && appGridLoader.item && appGridLoader.item.appLibrary === null) {
-                appGridLoader.item.appLibrary = root.shell.appLibrary
+                appGridLoader.item.appLibrary = appGridLibraryShim
             }
+            appGridLibraryShim.appsChanged()
         }
     }
 
