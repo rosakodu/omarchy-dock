@@ -23,6 +23,7 @@ BarWidget {
   property bool showBadges: true
   property bool widgetsEnabled: true
   property bool suppressSystemDock: true
+  property string borderMode: DockSettings.BORDER_ALWAYS
   readonly property bool settingsOpen: settingsWindow.open
   property bool isSavingSettings: false
 
@@ -97,6 +98,7 @@ BarWidget {
         } else {
           root.suppressSystemDock = normalized.suppressSystemDock
         }
+        root.borderMode = normalized.borderMode
         if (s && s.appMenuPosition !== undefined) {
           root.appMenuPosition = s.appMenuPosition
         }
@@ -134,6 +136,7 @@ BarWidget {
     s.showBadges = root.showBadges
     s.widgetsEnabled = root.widgetsEnabled
     s.suppressSystemDock = root.suppressSystemDock
+    s.borderMode = root.borderMode
     s.appMenuPosition = root.appMenuPosition || s.appMenuPosition || "left"
     s.widgetPosition = root.widgetPosition || s.widgetPosition || "right"
     s.widgetSavedPositions = root.widgetSavedPositions || s.widgetSavedPositions || {}
@@ -287,6 +290,20 @@ BarWidget {
       root.bar.run("omarchy-shell rosakodu.dock setSuppressSystemDock " + (val ? "true" : "false"))
     }
   }
+
+  function setBorderMode(mode) {
+    root.borderMode = DockSettings.normalizeBorderMode(mode)
+    saveSettings()
+    if (root.bar && typeof root.bar.run === "function") {
+      root.bar.run("omarchy-shell rosakodu.dock setBorderMode " + root.borderMode)
+    }
+  }
+
+  readonly property var borderModeOptions: [
+    { value: DockSettings.BORDER_ALWAYS, label: strings.t("dock.borderAlways") },
+    { value: DockSettings.BORDER_HOVER, label: strings.t("dock.borderHover") },
+    { value: DockSettings.BORDER_NONE, label: strings.t("dock.borderNone") }
+  ]
 
   readonly property bool opened: settingsWindow.open
   function open() { settingsWindow.open = true }
@@ -786,6 +803,56 @@ BarWidget {
             cursorShape: Qt.PointingHandCursor
             onClicked: {
               root.setOverlayMode(!root.overlayMode)
+            }
+          }
+        }
+
+        // Dock Border Mode Row
+        Item {
+          id: borderModeRow
+          Layout.fillWidth: true
+          height: 42
+
+          RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 10
+            anchors.rightMargin: 0
+            spacing: 8
+
+            ColumnLayout {
+              Layout.fillWidth: true
+              Layout.alignment: Qt.AlignVCenter
+              spacing: 1
+
+              Text {
+                Layout.fillWidth: true
+                text: strings.t("dock.border")
+                textFormat: Text.PlainText
+                font.family: Style.font.family
+                font.pixelSize: 12
+                font.bold: true
+                color: Color.popups.text
+                elide: Text.ElideRight
+              }
+
+              Text {
+                Layout.fillWidth: true
+                text: strings.t("dock.borderDesc")
+                textFormat: Text.PlainText
+                font.family: Style.font.family
+                font.pixelSize: 10
+                color: Color.muted
+                elide: Text.ElideRight
+              }
+            }
+
+            DockDropdown {
+              Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
+              Layout.preferredWidth: 130
+              showLabel: false
+              value: root.borderMode
+              options: root.borderModeOptions
+              onChanged: function(value) { root.setBorderMode(value) }
             }
           }
         }

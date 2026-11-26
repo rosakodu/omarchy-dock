@@ -108,7 +108,8 @@ class Tier1LocalizationFeatureTest(unittest.TestCase):
         self.assertEqual(len(found_locales), 50, "All 50 Omarchy locales must have catalogs")
         required_keys = [
             "dock.settings", "dock.enable", "dock.autohide", "dock.keybind", "dock.keybindHint",
-            "dock.copied", "dock.overlay", "dock.badges", "dock.widgets", "dock.configureWidgets",
+            "dock.copied", "dock.overlay", "dock.border", "dock.borderDesc", "dock.borderAlways",
+            "dock.borderHover", "dock.borderNone", "dock.badges", "dock.widgets", "dock.configureWidgets",
             "dock.suppressSystemDock", "dock.suppressSystemDockDesc", "dock.importOmarchyPins",
             "picker.title", "picker.appMenuPosition", "picker.widgetPosition", "picker.left",
             "picker.right", "picker.apps", "picker.dock", "picker.off", "picker.tray",
