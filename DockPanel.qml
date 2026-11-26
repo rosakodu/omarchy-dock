@@ -129,6 +129,8 @@ Item {
         function toggle(): string { root.toggle(); return "ok" }
         function refresh(): string { return root.refresh() }
         function getBarStyleState(): string { return root.barStyleState }
+        function getBorderMode(): string { return root.borderMode }
+        function setBorderMode(mode: string): string { root.borderMode = DockSettings.normalizeBorderMode(mode); root.saveSettings(); return root.borderMode }
 
     function openWidgetPicker(): string {
             root.openWidgetPicker()
@@ -456,6 +458,7 @@ Item {
     property bool showBadges: true
     property bool glassmorphism: false
     property real blurOpacity: 0.68
+    property string borderMode: DockSettings.BORDER_ALWAYS  // "always" | "hover" | "none"
     readonly property bool showAppMenu: root.widgetsEnabled && root.dockWidgets && (root.dockWidgets.indexOf("omarchy.apps") !== -1)
     property string appMenuPosition: "left"
     property bool widgetsEnabled: true
@@ -1010,6 +1013,7 @@ Item {
                 if (s.glassmorphism !== undefined) {
                     root.glassmorphism = (s.glassmorphism === true)
                 }
+                root.borderMode = DockSettings.normalizeBorderMode(s.borderMode)
                 if (s.blurOpacity !== undefined) {
                     var bo = Number(s.blurOpacity)
                     if (isFinite(bo) && bo >= 0.1 && bo <= 1.0) root.blurOpacity = bo
@@ -1073,6 +1077,7 @@ Item {
             showBadges: root.showBadges,
             glassmorphism: root.glassmorphism,
             blurOpacity: root.blurOpacity,
+            borderMode: root.borderMode,
             widgetsEnabled: root.widgetsEnabled,
             appMenuPosition: root.appMenuPosition || "left",
             widgetPosition: root.widgetPosition || "right",
@@ -2858,8 +2863,12 @@ Item {
                 if (!Border.canUseNative(root.dockBorderSpec)) return 0
                 return Border.uniformWidth(root.dockBorderSpec)
             }
+            // borderMode ("always" | "hover" | "none"): the border keeps its width
+            // and only fades its color, so hiding it never shifts the contents.
+            HoverHandler { id: dockSurfaceBorderHover }
+            readonly property bool borderShown: DockSettings.borderVisible(root.borderMode, dockSurfaceBorderHover.hovered)
             border.color: {
-                if (root.barStyleState === "none") return "transparent"
+                if (root.barStyleState === "none" || !dockSurface.borderShown) return "transparent"
                 if (root.barStyleState === "glassy") {
                     if (Border.isNone(root.dockBorderSpec)) return "transparent"
                     var gc = Border.color(root.dockBorderSpec)
@@ -2874,6 +2883,8 @@ Item {
 
             Loader {
                 anchors.fill: parent
+                opacity: dockSurface.borderShown ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
                 active: root.barStyleState === "opaque" && Border.needsOverlay(root.dockBorderSpec)
                 sourceComponent: DockBorderOverlay {
                     anchors.fill: parent

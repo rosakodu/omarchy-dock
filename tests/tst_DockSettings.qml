@@ -13,6 +13,41 @@ TestCase {
         compare(settings.suppressSystemDock, true)
         compare(DockSettings.normalize({ suppressSystemDock: false }).suppressSystemDock, false)
         compare(DockSettings.normalize({ suppressSystemDock: "false" }).suppressSystemDock, false)
+        compare(settings.borderMode, "always")
+    }
+
+    function test_borderModeNormalization_data() {
+        return [
+            { tag: "always", value: "always", expected: "always" },
+            { tag: "hover", value: "hover", expected: "hover" },
+            { tag: "none", value: "none", expected: "none" },
+            { tag: "mixed case and padding", value: "  Hover ", expected: "hover" },
+            { tag: "unknown falls back", value: "sometimes", expected: "always" },
+            { tag: "empty", value: "", expected: "always" },
+            { tag: "null", value: null, expected: "always" },
+            { tag: "boolean", value: false, expected: "always" }
+        ]
+    }
+
+    function test_borderModeNormalization(data) {
+        compare(DockSettings.normalizeBorderMode(data.value), data.expected)
+        compare(DockSettings.normalize({ borderMode: data.value }).borderMode, data.expected)
+    }
+
+    function test_borderVisible_data() {
+        return [
+            { tag: "always idle", mode: "always", hovered: false, expected: true },
+            { tag: "always hovered", mode: "always", hovered: true, expected: true },
+            { tag: "hover idle", mode: "hover", hovered: false, expected: false },
+            { tag: "hover hovered", mode: "hover", hovered: true, expected: true },
+            { tag: "none idle", mode: "none", hovered: false, expected: false },
+            { tag: "none hovered", mode: "none", hovered: true, expected: false },
+            { tag: "invalid behaves as always", mode: "bogus", hovered: false, expected: true }
+        ]
+    }
+
+    function test_borderVisible(data) {
+        compare(DockSettings.borderVisible(data.mode, data.hovered), data.expected)
     }
 
     function test_legacyAutohideMigration_data() {

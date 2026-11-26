@@ -45,13 +45,34 @@ function normalizeSuppressSystemDock(value) {
     return true
 }
 
+var BORDER_ALWAYS = "always"
+var BORDER_HOVER = "hover"
+var BORDER_NONE = "none"
+
+// How the dock draws its Hyprland-matched border: always, only while the
+// pointer is over the dock, or never. Anything unrecognised keeps the
+// original always-on border.
+function normalizeBorderMode(value) {
+    var mode = String(value === undefined || value === null ? "" : value).trim().toLowerCase()
+    if (mode === BORDER_HOVER || mode === BORDER_NONE) return mode
+    return BORDER_ALWAYS
+}
+
+function borderVisible(borderMode, hovered) {
+    var mode = normalizeBorderMode(borderMode)
+    if (mode === BORDER_NONE) return false
+    if (mode === BORDER_HOVER) return hovered === true
+    return true
+}
+
 function normalize(raw) {
     var settings = raw && typeof raw === "object" ? raw : {}
     return {
         visibilityMode: normalizeVisibilityMode(settings.visibilityMode, settings.autohide),
         overlayMode: normalizeOverlayMode(settings.overlayMode, settings.spaceMode),
         visibleWorkspace: normalizeVisibleWorkspace(settings.visibleWorkspace),
-        suppressSystemDock: normalizeSuppressSystemDock(settings.suppressSystemDock)
+        suppressSystemDock: normalizeSuppressSystemDock(settings.suppressSystemDock),
+        borderMode: normalizeBorderMode(settings.borderMode)
     }
 }
 

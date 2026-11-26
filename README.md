@@ -71,6 +71,7 @@ You can customize options directly via the `···` status bar widget or in `~/.
   "visibleWorkspace": "all",
   "showFolderTitles": true,
   "showBadges": true,
+  "borderMode": "always",
   "widgetsEnabled": true,
   "widgetPosition": "left",
   "dockWidgets": [
@@ -79,7 +80,10 @@ You can customize options directly via the `···` status bar widget or in `~/.
 }
 ```
 
-`visibilityMode` accepts `always`, `hover`, `keybind`, or `hybrid`. `overlayMode` uses the
+`visibilityMode` accepts `always`, `hover`, `keybind`, or `hybrid`.
+`borderMode` accepts `always` (default), `hover`, or `none`: the dock border,
+which follows your Hyprland window border, can stay on, show only while the
+pointer is over the dock, or be hidden entirely. `overlayMode` uses the
 native v1.5.0 implementation: `false` reserves screen space and `true` floats
 the dock above tiled windows.
 `visibleWorkspace` accepts `all`, a numeric workspace ID, or a Hyprland
