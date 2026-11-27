@@ -1166,7 +1166,10 @@ function matchToplevel(toplevel, appId, entry, desktopEntries, cachedCliApp) {
         var isZenTop = (appClassClean === "zen-browser" || appClassClean === "zen" || baseAppClass === "zen");
 
         if (cleanId === baseAppClass || cleanId === appClassClean) return true;
-        if (entry) {
+        // A web-app shortcut (Chrome --app-id / --app) runs the browser binary;
+        // that must not make plain browser windows part of the web app.
+        var bIsWebAppEntry = !!entry && /\s--app(-id)?=/.test(getEntryExec(entry).toLowerCase());
+        if (entry && !bIsWebAppEntry) {
             var bEntryId = stripDesktop(entry.id || "").toLowerCase();
             var bExec = getEntryExec(entry).toLowerCase().split(/\s+/)[0].split("/").pop();
             if (bEntryId === baseAppClass || bEntryId === appClassClean || bExec === baseAppClass || bExec === appClassClean) return true;
