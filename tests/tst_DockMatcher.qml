@@ -618,6 +618,36 @@ TestCase {
         compare(items[0].exec, "/home/user/chrome-app personal --app=\"https://www.amazon.ca/\"")
     }
 
+    function test_chromeAppIdShortcutLeavesBrowserWindowsAlone() {
+        // A web app installed from Chrome gets a desktop entry that runs the
+        // browser binary with --app-id; plain Chrome windows must stay on the
+        // Chrome item instead of being grouped under that web app.
+        var appId = "hnpfjngllnobngcgfapefoaidbinmjnm"
+        var chromeEntry = { id: "google-chrome.desktop", name: "Google Chrome", exec: "/usr/bin/google-chrome-stable %U", icon: "google-chrome" }
+        var pwaEntry = {
+            id: "chrome-" + appId + "-Default.desktop",
+            name: "WhatsApp Web",
+            exec: "/opt/google/chrome/google-chrome --profile-directory=Default --app-id=" + appId,
+            icon: "chrome-" + appId + "-Default"
+        }
+        var entries = [pwaEntry, chromeEntry]
+        var chromeTop = { appId: "google-chrome", title: "New Tab - Google Chrome", address: "0x1" }
+        var pwaTop = { appId: "chrome-" + appId + "-Default", title: "WhatsApp", address: "0x2" }
+
+        // 1. The web app item keeps its own window but not the browser's
+        compare(DockMatcher.matchToplevel(pwaTop, "chrome-" + appId + "-Default", pwaEntry, entries), true)
+        compare(DockMatcher.matchToplevel(chromeTop, "chrome-" + appId + "-Default", pwaEntry, entries), false)
+
+        // 2. With both pinned, each item gets exactly its own window
+        var pinned = ["google-chrome", "chrome-" + appId + "-Default"]
+        var items = DockMatcher.buildDockItems(pinned, [pwaTop, chromeTop], chromeTop, entries, null, {}, {}, 0, [])
+        compare(items.length, 2)
+        compare(items[0].id, "google-chrome")
+        compare(items[0].windowCount, 1)
+        compare(items[1].id, "chrome-" + appId + "-Default")
+        compare(items[1].windowCount, 1)
+    }
+
     function test_browserNeverSwallowedByWebAppLauncher() {
         var xEntry = {
             id: "X.desktop",
