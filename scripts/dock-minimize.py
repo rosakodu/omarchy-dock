@@ -353,6 +353,38 @@ def match_chrome_pwa(c_class, query):
     return False
 
 
+def space_of(workspace_name):
+    """The Omarchy Space (com.t4t5.spaces) a workspace belongs to. A space's
+    tabs are workspaces named "s<N>:<k>"; the plain numbered workspaces are its
+    "home". None for a special (minimized) workspace, which belongs to none.
+    Without Spaces every workspace is "home", so nothing changes."""
+    name = str(workspace_name or "")
+    if name.startswith("special:"):
+        return None
+    m = re.match(r"^(s[1-9][0-9]*):[1-9][0-9]*$", name)
+    return m.group(1) if m else "home"
+
+
+def in_active_space(clients, focused_ws, target_addr=""):
+    """The clients a click may reach from `focused_ws`: those in its space,
+    minimized ones, and the one picked by address. The dock only shows the
+    active space's windows, so a click on an app with none there launches it
+    rather than pulling you into another space."""
+    here = space_of(focused_ws)
+    if not here:
+        return list(clients)
+    return [c for c in clients
+            if (target_addr and str(c.get("address", "")).lower() == target_addr)
+            or space_of(c.get("workspace", {}).get("name")) in (None, here)]
+
+
+def workspace_selector(name):
+    """A workspace for hl.dsp.window.move: a number as it is, a named one
+    (as a space's tab) by name."""
+    name = str(name)
+    return name if name.lstrip("-").isdigit() else "name:" + name
+
+
 def pick_target(matching, visible_windows, minimized_windows, target_addr, target_index, active_addr, all_clients=None):
     """The one window a dock click is aimed at, out of the app's windows.
 
@@ -645,6 +677,8 @@ def main():
     except Exception:
         pass
 
+    matching = in_active_space(matching, focused_ws, target_addr)
+
     visible_windows = []
     minimized_windows = []
 
@@ -687,7 +721,7 @@ def main():
             if str(target_ws).startswith("special:"):
                 target_ws = "1"
 
-            cmd_move = f'dispatch hl.dsp.window.move({{ window = "address:{addr}", workspace = "{target_ws}" }})'
+            cmd_move = f'dispatch hl.dsp.window.move({{ window = "address:{addr}", workspace = "{workspace_selector(target_ws)}" }})'
             res = hypr_cmd(sock_path, cmd_move)
             if "error" in res.lower():
                 hypr_cmd(sock_path, f"dispatch movetoworkspacesilent {target_ws},address:{addr}")
@@ -747,7 +781,7 @@ def main():
             if str(target_ws).startswith("special:"):
                 target_ws = "1"
 
-            cmd_move = f'dispatch hl.dsp.window.move({{ window = "address:{addr}", workspace = "{target_ws}" }})'
+            cmd_move = f'dispatch hl.dsp.window.move({{ window = "address:{addr}", workspace = "{workspace_selector(target_ws)}" }})'
             res = hypr_cmd(sock_path, cmd_move)
             if "error" in res.lower():
                 hypr_cmd(sock_path, f"dispatch movetoworkspacesilent {target_ws},address:{addr}")
