@@ -294,9 +294,49 @@ Item {
         return root.knownWindows
     }
 
+    // Omarchy Spaces (com.t4t5.spaces): the dock shows only the windows of
+    // the space you are on. A space's tabs are workspaces named "s<N>:<k>";
+    // the plain numbered ones are its "home". Without Spaces every workspace
+    // is home, so nothing is left out. Minimized (special:) windows and ones
+    // whose workspace isn't known yet always show.
+    function spaceOfWorkspace(name) {
+        var n = String(name || "")
+        if (n.indexOf("special:") === 0) return null
+        var m = n.match(/^(s[1-9][0-9]*):[1-9][0-9]*$/)
+        return m ? m[1] : "home"
+    }
+
+    function filterToActiveSpace(toplevels) {
+        if (typeof Hyprland === "undefined" || !Hyprland.focusedWorkspace || !Hyprland.toplevels) return toplevels
+        var active = root.spaceOfWorkspace(Hyprland.focusedWorkspace.name)
+        if (!active) return toplevels
+        var hyprTops = Hyprland.toplevels.values || []
+        var out = []
+        for (var i = 0; i < toplevels.length; i++) {
+            var top = toplevels[i]
+            var space
+            for (var j = 0; j < hyprTops.length; j++) {
+                var ht = hyprTops[j]
+                if (ht && (ht === top || ht.wayland === top)) {
+                    space = ht.workspace ? root.spaceOfWorkspace(ht.workspace.name) : undefined
+                    break
+                }
+            }
+            if (space === undefined || space === null || space === active) out.push(top)
+        }
+        return out
+    }
+
+    Timer {
+        id: spaceRefreshTimer
+        interval: 80
+        repeat: false
+        onTriggered: root.updateDockItems()
+    }
+
     function activateAppWindow(appId, winIndex) {
         root.syncKnownWindows()
-        var tops = root.knownWindows
+        var tops = root.filterToActiveSpace(root.knownWindows)
         var matched = []
         for (var i = 0; i < tops.length; i++) {
             var t = tops[i]
@@ -2164,7 +2204,7 @@ Item {
 
     function doUpdateDockItems() {
         root.syncKnownWindows()
-        var toplevels = root.knownWindows
+        var toplevels = root.filterToActiveSpace(root.knownWindows)
         var minTops = root.getMinimizedToplevels()
         var active = ToplevelManager.activeToplevel
         if (active) {
@@ -2348,6 +2388,9 @@ Item {
             }
             if (name === "movewindow" || name === "movewindowv2" || name === "activewindow" || name === "activewindowv2" || name === "closewindow" || name === "workspace" || name === "workspacev2" || name === "focusedmon") {
                 root.updateDockItems()
+                // Hyprland.focusedWorkspace can still name the old workspace
+                // here; filter again once it has moved on, for Omarchy Spaces.
+                if (name === "workspace" || name === "workspacev2" || name === "focusedmon") spaceRefreshTimer.restart()
                 return
             }
             if (name === "openwindow") {
