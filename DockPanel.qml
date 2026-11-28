@@ -327,6 +327,13 @@ Item {
         return out
     }
 
+    Timer {
+        id: spaceRefreshTimer
+        interval: 80
+        repeat: false
+        onTriggered: root.updateDockItems()
+    }
+
     function activateAppWindow(appId, winIndex) {
         root.syncKnownWindows()
         var tops = root.filterToActiveSpace(root.knownWindows)
@@ -2381,6 +2388,9 @@ Item {
             }
             if (name === "movewindow" || name === "movewindowv2" || name === "activewindow" || name === "activewindowv2" || name === "closewindow" || name === "workspace" || name === "workspacev2" || name === "focusedmon") {
                 root.updateDockItems()
+                // Hyprland.focusedWorkspace can still name the old workspace
+                // here; filter again once it has moved on, for Omarchy Spaces.
+                if (name === "workspace" || name === "workspacev2" || name === "focusedmon") spaceRefreshTimer.restart()
                 return
             }
             if (name === "openwindow") {
