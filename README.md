@@ -72,6 +72,7 @@ You can customize options directly via the `···` status bar widget or in `~/.
   "visibleWorkspace": "all",
   "showFolderTitles": true,
   "showBadges": true,
+  "spacePins": false,
   "widgetsEnabled": true,
   "widgetPosition": "left",
   "dockWidgets": [
@@ -79,6 +80,8 @@ You can customize options directly via the `···` status bar widget or in `~/.
   ]
 }
 ```
+
+`spacePins` (default `false`) gives each [Omarchy Spaces](https://github.com/t4t5/omarchy-spaces) space its own pins on top of the global ones. In a space other than home, an app you pin there is pinned for that space only, in `~/.config/omarchy/dock-pinned.<space id>.json`, and shows after the global pins. Reordering or unpinning a global pin still changes the global list. Home, and every space while it's off, shows the global pins as before.
 
 `visibilityMode` accepts `always`, `hover`, `keybind`, or `hybrid`. `overlayMode` uses the
 native v1.5.0 implementation: `false` reserves screen space and `true` floats
