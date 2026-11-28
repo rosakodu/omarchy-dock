@@ -16,6 +16,7 @@ A modern, highly polished, and fully native application dock plugin for **Omarch
 - 🎯 **Real-Time Hyprland IPC Focus Sync** — Moving the mouse cursor over any window tile on the desktop (`follow_mouse = 1`) or switching focus instantly syncs and highlights the corresponding slot on the dock in real time without lag.
 - ⚡ **Dedicated Controls (LMB, RMB & Middle-Click)** — Left-click opens closed apps or focuses/restores running windows. Right-click minimizes active/visible windows to a special minimized state. Middle-click (pressing the mouse wheel) instantly spawns a new duplicate instance anytime.
 - 👁️ **Smart Cursor Hiding** — The mouse cursor is automatically hidden (`Qt.BlankCursor`) during mouse wheel scrolling and folder title hover to ensure an unobstructed view of the status capsule and animations.
+- **Omarchy Spaces Aware** — With [Omarchy Spaces](https://github.com/t4t5/omarchy-spaces), the dock shows only the windows of the space you are on, and clicking an app with no window there opens a new one instead of pulling you into another space. Minimized windows stay reachable. Without Spaces nothing changes.
 - 🌐 **Full Web Apps (PWA) Support** — Automatic domain matching for Chrome/Chromium web apps (Google Maps, Google Contacts, WhatsApp, YouTube, Discord, etc.) with native GTK theme icons.
 - ⚡ **Zero-Flicker Boot & Tile Lift** — Two-phase initialization instantly reserves Hyprland exclusive space to lift tiled windows smoothly, followed by a monolithic fade-in once all vector theme icons are loaded.
 - 🧭 **Dynamic Auto-Positioning** — Automatically adapts its position opposite to the Omarchy status bar (top $\leftrightarrow$ bottom, left $\leftrightarrow$ right) and draws a dock on every connected monitor.
@@ -71,6 +72,7 @@ You can customize options directly via the `···` status bar widget or in `~/.
   "visibleWorkspace": "all",
   "showFolderTitles": true,
   "showBadges": true,
+  "spacePins": false,
   "widgetsEnabled": true,
   "widgetPosition": "left",
   "dockWidgets": [
@@ -78,6 +80,8 @@ You can customize options directly via the `···` status bar widget or in `~/.
   ]
 }
 ```
+
+`spacePins` (default `false`) gives each [Omarchy Spaces](https://github.com/t4t5/omarchy-spaces) space its own pins on top of the global ones. In a space other than home, an app you pin there is pinned for that space only, in `~/.config/omarchy/dock-pinned.<space id>.json`, and shows after the global pins. Reordering or unpinning a global pin still changes the global list. Home, and every space while it's off, shows the global pins as before.
 
 `visibilityMode` accepts `always`, `hover`, `keybind`, or `hybrid`. `overlayMode` uses the
 native v1.5.0 implementation: `false` reserves screen space and `true` floats

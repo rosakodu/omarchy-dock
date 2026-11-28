@@ -236,3 +236,32 @@ class ScanDiskIconsTest(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 
+
+
+class OmarchySpacesTest(unittest.TestCase):
+    # Omarchy Spaces (com.t4t5.spaces) names a space's tabs "s<N>:<k>"; the
+    # plain numbered workspaces are its "home".
+
+    def test_space_of_a_workspace(self):
+        self.assertEqual(dm.space_of("3"), "home")
+        self.assertEqual(dm.space_of("s7:1"), "s7")
+        self.assertEqual(dm.space_of("s12:14"), "s12")
+        self.assertIsNone(dm.space_of("special:minimized"))
+        self.assertEqual(dm.space_of("music"), "home")
+
+    def test_a_click_only_reaches_windows_of_the_space_you_are_on(self):
+        clients = [_client("0x1", "s2:1"), _client("0x2", "s7:1"),
+                   _client("0x3", "4"), _client("0x4", "special:minimized")]
+        reach = lambda ws, addr="": [c["address"] for c in dm.in_active_space(clients, ws, addr)]
+        self.assertEqual(reach("s7:2"), ["0x2", "0x4"])
+        self.assertEqual(reach("1"), ["0x3", "0x4"])
+        # A window picked by address is reached wherever it is.
+        self.assertEqual(reach("s7:1", "0x1"), ["0x1", "0x2", "0x4"])
+
+    def test_without_spaces_nothing_is_left_out(self):
+        clients = [_client("0x1", "1"), _client("0x2", "5"), _client("0x3", "special:x")]
+        self.assertEqual(dm.in_active_space(clients, "2"), clients)
+
+    def test_a_space_tab_is_moved_to_by_name(self):
+        self.assertEqual(dm.workspace_selector("4"), "4")
+        self.assertEqual(dm.workspace_selector("s7:1"), "name:s7:1")

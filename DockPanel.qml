@@ -149,6 +149,7 @@ Item {
         function setAutohideEdgeDepth(val: string): string { var n = parseInt(val, 10); if (!isNaN(n) && n >= 1 && n <= 64) { root.autohideEdgeDepth = n; root.saveSettings(); } return "ok" }
         function setShowFolderTitles(val: string): string { root.showFolderTitles = (val === "true" || val === "1"); root.saveSettings(); return "ok" }
         function setShowBadges(val: string): string { root.showBadges = (val === "true" || val === "1"); root.saveSettings(); return "ok" }
+        function setSpacePins(val: string): string { root.spacePins = (val === "true" || val === "1"); root.saveSettings(); return "ok" }
         function setOverlayMode(val: string): string { root.overlayMode = (val === "true" || val === "1"); root.saveSettings(); return "ok" }
         function setSuppressSystemDock(val: string): string { root.setSuppressSystemDock(val === "true" || val === "1"); return "ok" }
         function importOmarchyPins(): string { return root.importOmarchyPins() }
@@ -294,9 +295,52 @@ Item {
         return root.knownWindows
     }
 
+    // Omarchy Spaces (com.t4t5.spaces): the dock shows only the windows of
+    // the space you are on. A space's tabs are workspaces named "s<N>:<k>";
+    // the plain numbered ones are its "home". Without Spaces every workspace
+    // is home, so nothing is left out. Minimized (special:) windows and ones
+    // whose workspace isn't known yet always show.
+    function spaceOfWorkspace(name) {
+        var n = String(name || "")
+        if (n.indexOf("special:") === 0) return null
+        var m = n.match(/^(s[1-9][0-9]*):[1-9][0-9]*$/)
+        return m ? m[1] : "home"
+    }
+
+    function filterToActiveSpace(toplevels) {
+        if (typeof Hyprland === "undefined" || !Hyprland.focusedWorkspace || !Hyprland.toplevels) return toplevels
+        var active = root.spaceOfWorkspace(Hyprland.focusedWorkspace.name)
+        if (!active) return toplevels
+        var hyprTops = Hyprland.toplevels.values || []
+        var out = []
+        for (var i = 0; i < toplevels.length; i++) {
+            var top = toplevels[i]
+            var space
+            for (var j = 0; j < hyprTops.length; j++) {
+                var ht = hyprTops[j]
+                if (ht && (ht === top || ht.wayland === top)) {
+                    space = ht.workspace ? root.spaceOfWorkspace(ht.workspace.name) : undefined
+                    break
+                }
+            }
+            if (space === undefined || space === null || space === active) out.push(top)
+        }
+        return out
+    }
+
+    Timer {
+        id: spaceRefreshTimer
+        interval: 80
+        repeat: false
+        onTriggered: {
+            root.refreshPinSpace()
+            root.updateDockItems()
+        }
+    }
+
     function activateAppWindow(appId, winIndex) {
         root.syncKnownWindows()
-        var tops = root.knownWindows
+        var tops = root.filterToActiveSpace(root.knownWindows)
         var matched = []
         for (var i = 0; i < tops.length; i++) {
             var t = tops[i]
@@ -454,6 +498,8 @@ Item {
     readonly property int effectiveAutohideEdgeDepth: Math.max(4, Math.min(64, root.autohideEdgeDepth))
     property bool showFolderTitles: true
     property bool showBadges: true
+    // Per-space pins for Omarchy Spaces (see savePinned).
+    property bool spacePins: false
     property bool glassmorphism: false
     property real blurOpacity: 0.68
     readonly property bool showAppMenu: root.widgetsEnabled && root.dockWidgets && (root.dockWidgets.indexOf("omarchy.apps") !== -1)
@@ -1007,6 +1053,7 @@ Item {
                 if (s.showBadges !== undefined) {
                     root.showBadges = (s.showBadges === true)
                 }
+                root.spacePins = (s.spacePins === true)
                 if (s.glassmorphism !== undefined) {
                     root.glassmorphism = (s.glassmorphism === true)
                 }
@@ -1071,6 +1118,7 @@ Item {
             autohideEdgeDepth: root.autohideEdgeDepth,
             showFolderTitles: root.showFolderTitles,
             showBadges: root.showBadges,
+            spacePins: root.spacePins,
             glassmorphism: root.glassmorphism,
             blurOpacity: root.blurOpacity,
             widgetsEnabled: root.widgetsEnabled,
@@ -2097,9 +2145,9 @@ Item {
     function refresh() {
         var parsed = DockModel.parsePinned(userPinnedFile.text() || "")
         if (parsed && parsed.length > 0) {
-            root.pinnedIds = parsed
+            root.setGlobalPins(parsed)
         } else {
-            root.pinnedIds = root.getOmarchyDefaultPinned()
+            root.setGlobalPins(root.getOmarchyDefaultPinned())
         }
         root.refreshLayers()
         root.updatePluginEnabled()
@@ -2164,7 +2212,7 @@ Item {
 
     function doUpdateDockItems() {
         root.syncKnownWindows()
-        var toplevels = root.knownWindows
+        var toplevels = root.filterToActiveSpace(root.knownWindows)
         var minTops = root.getMinimizedToplevels()
         var active = ToplevelManager.activeToplevel
         if (active) {
@@ -2348,6 +2396,9 @@ Item {
             }
             if (name === "movewindow" || name === "movewindowv2" || name === "activewindow" || name === "activewindowv2" || name === "closewindow" || name === "workspace" || name === "workspacev2" || name === "focusedmon") {
                 root.updateDockItems()
+                // Hyprland.focusedWorkspace can still name the old workspace
+                // here; filter again once it has moved on, for Omarchy Spaces.
+                if (name === "workspace" || name === "workspacev2" || name === "focusedmon") spaceRefreshTimer.restart()
                 return
             }
             if (name === "openwindow") {
@@ -2573,18 +2624,18 @@ Item {
             if (txt && txt.trim().length > 0) {
                 var parsed = DockModel.parsePinned(txt)
                 if (parsed && parsed.length > 0) {
-                    root.pinnedIds = parsed
+                    root.setGlobalPins(parsed)
                     root.isPinnedLoaded = true
                 } else {
-                    root.pinnedIds = root.getOmarchyDefaultPinned()
+                    root.setGlobalPins(root.getOmarchyDefaultPinned())
                     root.isPinnedLoaded = true
                 }
             } else {
-                root.pinnedIds = root.getOmarchyDefaultPinned()
+                root.setGlobalPins(root.getOmarchyDefaultPinned())
                 root.isPinnedLoaded = true
             }
         } catch(e) {
-            root.pinnedIds = root.getOmarchyDefaultPinned()
+            root.setGlobalPins(root.getOmarchyDefaultPinned())
             root.isPinnedLoaded = true
         }
         root.readSettings()
@@ -2627,21 +2678,21 @@ Item {
             if (txt && txt.trim().length > 0) {
                 var parsed = DockModel.parsePinned(txt)
                 if (parsed && parsed.length > 0) {
-                    root.pinnedIds = parsed
+                    root.setGlobalPins(parsed)
                 } else {
-                    root.pinnedIds = root.getOmarchyDefaultPinned()
+                    root.setGlobalPins(root.getOmarchyDefaultPinned())
                 }
                 root.isPinnedLoaded = true
                 root.doUpdateDockItems()
             } else {
-                root.pinnedIds = root.getOmarchyDefaultPinned()
+                root.setGlobalPins(root.getOmarchyDefaultPinned())
                 root.isPinnedLoaded = true
                 root.doUpdateDockItems()
             }
         }
         onLoadFailed: {
-            if (!root.pinnedIds || root.pinnedIds.length === 0) {
-                root.pinnedIds = root.getOmarchyDefaultPinned()
+            if (!root.globalPins || root.globalPins.length === 0) {
+                root.setGlobalPins(root.getOmarchyDefaultPinned())
             }
             root.isPinnedLoaded = true
             root.doUpdateDockItems()
@@ -2679,8 +2730,104 @@ Item {
     }
 
     function savePinned() {
-        var json = DockModel.serializePinned(root.pinnedIds)
-        userPinnedFile.setText(json + "\n")
+        // With `spacePins`, in a space other than home the dock shows the
+        // global pins and then that space's own. What was global stays global
+        // (in its new order, or gone if unpinned there); what is new is
+        // pinned for that space only.
+        if (root.spacePinnedPath === "") {
+            root.globalPins = root.pinnedIds
+            userPinnedFile.setText(DockModel.serializePinned(root.pinnedIds) + "\n")
+            return
+        }
+        var globalIds = {}
+        for (var g = 0; g < root.globalPins.length; g++) globalIds[root.pinKey(root.globalPins[g])] = true
+        var nextGlobal = []
+        var nextSpace = []
+        for (var i = 0; i < root.pinnedIds.length; i++) {
+            var item = root.pinnedIds[i]
+            if (globalIds[root.pinKey(item)]) nextGlobal.push(item)
+            else nextSpace.push(item)
+        }
+        var globalJson = DockModel.serializePinned(nextGlobal)
+        if (globalJson !== DockModel.serializePinned(root.globalPins)) {
+            root.globalPins = nextGlobal
+            userPinnedFile.setText(globalJson + "\n")
+        }
+        root.spaceExtras = nextSpace.length > 0 ? nextSpace : null
+        if (nextSpace.length > 0) spacePinnedFile.setText(DockModel.serializePinned(nextSpace) + "\n")
+        else Quickshell.execDetached(["rm", "-f", "--", root.spacePinnedPath])
+    }
+
+    // Per-space pins (`spacePins`, for Omarchy Spaces): each space other than
+    // home can add its own pins after the global ones, kept in
+    // dock-pinned.<space id>.json beside dock-pinned.json. Off, or in home,
+    // the dock shows the global pins as always.
+    property var globalPins: []
+    property var spaceExtras: null
+    property string pinSpace: "home"
+    readonly property string spacePinnedPath: root.pinSpace === "home" ? ""
+        : Quickshell.env("HOME") + "/.config/omarchy/dock-pinned." + root.pinSpace + ".json"
+
+    function pinKey(item) {
+        if (item && typeof item === "object") return "stack:" + String(item.id || "")
+        return String(item || "").replace(/\.desktop$/i, "").toLowerCase()
+    }
+
+    function setGlobalPins(list) {
+        root.globalPins = list || []
+        root.applyPins()
+    }
+
+    function refreshPinSpace() {
+        var space = "home"
+        if (root.spacePins && typeof Hyprland !== "undefined" && Hyprland.focusedWorkspace) {
+            space = root.spaceOfWorkspace(Hyprland.focusedWorkspace.name)
+            if (!space) return
+        }
+        if (space === root.pinSpace) return
+        root.spaceExtras = null
+        root.pinSpace = space
+        root.applyPins()
+    }
+    onSpacePinsChanged: root.refreshPinSpace()
+
+    function applyPins() {
+        var extras = root.spacePinnedPath !== "" ? root.spaceExtras : null
+        if (!extras || extras.length === 0) {
+            root.pinnedIds = root.globalPins
+            root.updateDockItems()
+            return
+        }
+        // Global first, then the space's own not already among them.
+        var seen = {}
+        var merged = []
+        for (var g = 0; g < root.globalPins.length; g++) {
+            seen[root.pinKey(root.globalPins[g])] = true
+            merged.push(root.globalPins[g])
+        }
+        for (var e = 0; e < extras.length; e++) {
+            if (!seen[root.pinKey(extras[e])]) merged.push(extras[e])
+        }
+        root.pinnedIds = merged
+        root.updateDockItems()
+    }
+
+    FileView {
+        id: spacePinnedFile
+        path: root.spacePinnedPath
+        watchChanges: true
+        atomicWrites: true
+        printErrors: false
+        onLoaded: {
+            var txt = text()
+            root.spaceExtras = txt && txt.trim().length > 0 ? DockModel.parsePinned(txt) : null
+            root.applyPins()
+        }
+        onLoadFailed: {
+            root.spaceExtras = null
+            root.applyPins()
+        }
+        onFileChanged: spacePinnedFile.reload()
     }
 
     function setPinned(next) {
